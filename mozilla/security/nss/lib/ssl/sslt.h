@@ -75,6 +75,8 @@ typedef enum {
     ssl_kea_fortezza = 3,       /* deprecated, now unused */
     ssl_kea_ecdh     = 4,
     ssl_kea_srp      = 5,
+    ssl_kea_srp_rsa  = 6,
+    ssl_kea_srp_dss  = 7,
     ssl_kea_size		/* number of ssl_kea_ algorithms */
 } SSLKEAType;
 
@@ -90,6 +92,8 @@ typedef enum {
 #define kt_ecdh   	ssl_kea_ecdh
 #define kt_kea_size	ssl_kea_size
 #define kt_srp		ssl_kea_srp
+#define kt_srp_rsa      ssl_kea_srp_rsa
+#define kt_srp_dss      ssl_kea_srp_dss
 
 typedef enum {
     ssl_sign_null   = 0, 

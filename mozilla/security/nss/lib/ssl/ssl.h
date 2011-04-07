@@ -358,7 +358,9 @@ SSL_IMPORT SECStatus SSL_SetPKCS11PinArg(PRFileDesc *fd, void *a);
 /*
  * Set the client side user name and password non-interactively.
  */
-SSL_IMPORT SECStatus SSL_SetUserLogin(PRFileDesc *fd, char *u, char *p);
+SSL_IMPORT SECStatus SSL_SetUserLogin(PRFileDesc *fd,
+                                      const char *u,
+                                      const char *p);
 
 /*
  * This sets the client side callback for SSL to retrieve the user password.
@@ -612,6 +614,7 @@ SSL_IMPORT SSL3Statistics * SSL_GetStatistics(void);
 /* Report more information than SSL_SecurityStatus.
 ** Caller supplies the info struct.  Function fills it in.
 */
+SSL_IMPORT SECStatus SSL_GetChannelUsername(PRFileDesc *fd, SECItem *user);
 SSL_IMPORT SECStatus SSL_GetChannelInfo(PRFileDesc *fd, SSLChannelInfo *info,
                                         PRUintn len);
 SSL_IMPORT SECStatus SSL_GetCipherSuiteInfo(PRUint16 cipherSuite, 

@@ -78,6 +78,11 @@ static PRInt32 ssl3_SendRenegotiationInfoXtn(sslSocket * ss,
     PRBool append, PRUint32 maxBytes);
 static SECStatus ssl3_HandleRenegotiationInfoXtn(sslSocket *ss, 
     PRUint16 ex_type, SECItem *data);
+static SECStatus ssl3_HandleSRPHelloXtn(sslSocket *ss, PRUint16 ext,
+    SECItem *data);
+PRInt32 ssl3_SendSRPHelloXtn(sslSocket * ss, PRBool append,
+    PRUint32 maxBytes);
+
 
 /*
  * Write bytes.  Using this function means the SECItem structure
@@ -235,6 +240,7 @@ static const ssl3HelloExtensionHandler clientHelloHandlers[] = {
 #endif
     { ssl_session_ticket_xtn,     &ssl3_ServerHandleSessionTicketXtn },
     { ssl_renegotiation_info_xtn, &ssl3_HandleRenegotiationInfoXtn },
+    { ssl_srp_hello_xtn,          &ssl3_HandleSRPHelloXtn },
     { -1, NULL }
 };
 
@@ -267,7 +273,8 @@ ssl3HelloExtensionSender clientHelloSendersTLS[SSL_MAX_EXTENSIONS] = {
     { ssl_elliptic_curves_xtn,    &ssl3_SendSupportedCurvesXtn },
     { ssl_ec_point_formats_xtn,   &ssl3_SendSupportedPointFormatsXtn },
 #endif
-    { ssl_session_ticket_xtn,     &ssl3_SendSessionTicketXtn }
+    { ssl_session_ticket_xtn,     &ssl3_SendSessionTicketXtn },
+    { ssl_srp_hello_xtn,          &ssl3_SendSRPHelloXtn }
     /* any extra entries will appear as { 0, NULL }    */
 };
 
@@ -1519,3 +1526,59 @@ ssl3_HandleRenegotiationInfoXtn(sslSocket *ss, PRUint16 ex_type, SECItem *data)
     return rv;
 }
 
+/* send user mapping indication using info from ss->sec.userlogin
+ * called from ssl3_CallHelloExtensionSenders */
+PRInt32
+ssl3_SendSRPHelloXtn(sslSocket * ss, PRBool append,
+                                         PRUint32 maxBytes)
+{
+    SECItem     * user = ss->sec.userName;
+ 
+    if (user == NULL)
+        return 0; /* no credentials, no extension */
+
+    if (append && maxBytes >= user->len + 5) {
+        SECStatus rv;
+	/* extension_type 6 */
+        rv = ssl3_AppendHandshakeNumber(ss, 12, 2);
+	if (rv != SECSuccess) return 0;
+	/* length of extension */
+	rv = ssl3_AppendHandshakeNumber(ss, user->len + 1, 2);
+        if (rv != SECSuccess) return 0;
+	/* length of data */
+	rv = ssl3_AppendHandshakeNumber(ss, user->len, 1);
+        if (rv != SECSuccess) return 0;
+	/* extension_data = srp user name */
+	rv = ssl3_AppendHandshake(ss, user->data, user->len);
+	if (rv != SECSuccess) return 0;
+    }
+    return user->len+5;
+}
+
+SECStatus
+ssl3_HandleSRPHelloXtn(sslSocket *ss, PRUint16 ext, SECItem *data)
+{
+    SECStatus       rv;
+    SECItem         username;
+    
+	rv = ssl3_ConsumeHandshakeVariable(ss, &username, 1, &data->data, &data->len);
+    if (rv != SECSuccess)
+        return rv;
+
+    /* enforce SRP username length constrain */
+    if (data->len > MAX_SRP_USERNAME_LENGTH)
+        data->len = MAX_SRP_USERNAME_LENGTH;
+    
+    ss->sec.userName = PORT_ZAlloc(sizeof(SECItem));
+    if (!ss->sec.userName)
+        goto no_memory;
+
+    rv = SECITEM_CopyItem(NULL, ss->sec.userName, &username);
+    if (rv != SECSuccess)
+        goto no_memory;
+
+	return rv;
+no_memory:
+    ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);
+    return SECFailure;
+}

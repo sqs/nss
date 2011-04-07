@@ -307,9 +307,10 @@ typedef struct {
 } ssl3CipherSuiteCfg;
 
 #ifdef NSS_ENABLE_ECC
-#define ssl_V3_SUITES_IMPLEMENTED 50
+#define ssl_V3_SUITES_IMPLEMENTED 60
 #else
-#define ssl_V3_SUITES_IMPLEMENTED 30
+#define ssl_V3_SUITES_IMPLEMENTED 60
+/* TODO(sqs): where do these #s come from? I think sslsock.c, where we added 9 more SRP suites. before tls-srp patch, these were 59 and 39. */
 #endif /* NSS_ENABLE_ECC */
 
 typedef struct sslOptionsStr {
@@ -953,6 +954,8 @@ struct sslSecurityInfoStr {
     CERTCertificate *localCert;					/* ssl 2 & 3 */
     CERTCertificate *peerCert;					/* ssl 2 & 3 */
     SECKEYPublicKey *peerKey;					/* ssl3 only */
+    SECItem         *userName;          /* SSL username credential */
+    SECItem         *userPasswd;        /* SSL userpasswd credential */
 
     SSLSignType      authAlgorithm;
     PRUint32         authKeyBits;
@@ -1058,6 +1061,10 @@ const unsigned char *  preferredCipher;
     SSLHandshakeCallback      handshakeCallback;
     void                     *handshakeCallbackData;
     void                     *pkcs11PinArg;
+    SSLUserPasswdCB           getUserPasswd;
+    void                     *getUserPasswdArg;
+    SSLGetSRPParamsCB         getSRPParams;
+    void                     *getSRPParamsArg;
 
     PRIntervalTime            rTimeout; /* timeout for NSPR I/O */
     PRIntervalTime            wTimeout; /* timeout for NSPR I/O */

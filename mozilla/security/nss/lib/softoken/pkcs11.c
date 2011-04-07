@@ -328,6 +328,15 @@ static const struct mechanismList mechanisms[] = {
 				 CKF_GENERATE_KEY_PAIR}, PR_TRUE}, 
      {CKM_DH_PKCS_DERIVE,	{DH_MIN_P_BITS, DH_MAX_P_BITS,
 				 CKF_DERIVE}, 	PR_TRUE}, 
+     /* -------------------- SRP Key Exchange ------------------------------ */
+     /* DERIVE:   derive pms
+      * KEY_PAIR: DH-like key pair, server wraps pubkey w/ secret server key
+      */
+     {CKM_NSS_SRP_SERVER_KEY_PAIR_GEN,   {512, 8192,
+                                         CKF_GENERATE_KEY_PAIR}, PR_TRUE},
+     {CKM_NSS_SRP_CLIENT_KEY_PAIR_GEN,   {512, 8192,
+                                         CKF_GENERATE_KEY_PAIR}, PR_TRUE},
+     {CKM_NSS_SRP_DERIVE,   {512, 8192, CKF_DERIVE }, PR_TRUE},
 #ifdef NSS_ENABLE_ECC
      /* -------------------- Elliptic Curve Operations --------------------- */
      {CKM_EC_KEY_PAIR_GEN,      {112, 571, CKF_GENERATE_KEY_PAIR|CKF_EC_BPNU}, PR_TRUE}, 
@@ -943,6 +952,11 @@ sftk_handlePublicKeyObject(SFTKSession *session, SFTKObject *object,
 	wrap = CK_FALSE;
 	break;
 #endif /* NSS_ENABLE_ECC */
+    case CKK_SRP:
+	if ( !sftk_hasAttribute(object, CKA_VALUE)) {
+	    return CKR_TEMPLATE_INCOMPLETE;
+    }
+    break;
     default:
 	return CKR_ATTRIBUTE_VALUE_INVALID;
     }
@@ -1117,6 +1131,20 @@ sftk_handlePrivateKeyObject(SFTKSession *session,SFTKObject *object,CK_KEY_TYPE 
         derive = CK_TRUE;
         createObjectInfo = PR_FALSE;
         break;
+    case CKK_SRP:
+	if ( !sftk_hasAttribute(object, CKA_VALUE)) {
+	    return CKR_TEMPLATE_INCOMPLETE;
+	}
+	if ( !sftk_hasAttribute(object, CKA_NSS_SRP_SECRET)) {
+	    return CKR_TEMPLATE_INCOMPLETE;
+	}
+	if ( !sftk_hasAttribute(object, CKA_NETSCAPE_DB)) {
+	    return CKR_TEMPLATE_INCOMPLETE;
+	}
+	encrypt = CK_FALSE;
+	recover = CK_FALSE;
+	wrap = CK_FALSE;
+	break;
     default:
 	return CKR_ATTRIBUTE_VALUE_INVALID;
     }
@@ -1675,6 +1703,12 @@ NSSLOWKEYPublicKey *sftk_GetPubKey(SFTKObject *object,CK_KEY_TYPE key_type,
     	crv = sftk_Attribute2SSecItem(arena,&pubKey->u.dh.publicValue,
 							object,CKA_VALUE);
 	break;
+    case CKK_SRP:
+	pubKey->keyType = NSSLOWKEYSRPKey;
+	crv = sftk_Attribute2SSecItem(arena, &pubKey->u.srp.pubKey,
+							object, CKA_VALUE);
+    	if (crv != CKR_OK) break;
+	break;
 #ifdef NSS_ENABLE_ECC
     case CKK_EC:
 	pubKey->keyType = NSSLOWKEYECKey;
@@ -1876,6 +1910,19 @@ sftk_mkPrivKey(SFTKObject *object, CK_KEY_TYPE key_type, CK_RV *crvp)
 	if (rv != SECSuccess) crv = CKR_HOST_MEMORY;
 	break;
 #endif /* NSS_ENABLE_ECC */
+
+    case CKK_SRP:
+	privKey->keyType = NSSLOWKEYSRPKey;
+	SFTK_SET_ITEM_TEMPLATE(itemTemplate, itemTemplateCount,
+		&privKey->u.srp.pubKey, CKA_NETSCAPE_DB);
+	itemTemplateCount++;
+	SFTK_SET_ITEM_TEMPLATE(itemTemplate, itemTemplateCount,
+		&privKey->u.srp.prvKey, CKA_VALUE);
+	itemTemplateCount++;
+	SFTK_SET_ITEM_TEMPLATE(itemTemplate, itemTemplateCount,
+		&privKey->u.srp.secret, CKA_NSS_SRP_SECRET);
+	itemTemplateCount++;
+	break;
 
     default:
 	crv = CKR_KEY_TYPE_INCONSISTENT;

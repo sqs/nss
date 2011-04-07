@@ -63,6 +63,8 @@ typedef uint16 ssl3CipherSuite;
 
 #define MAX_FRAGMENT_LENGTH		16384
      
+#define MAX_SRP_USERNAME_LENGTH 255
+     
 typedef enum {
     content_change_cipher_spec = 20, 
     content_alert              = 21,
@@ -137,7 +139,9 @@ typedef enum {
     certificate_unobtainable        = 111,
     unrecognized_name               = 112,
     bad_certificate_status_response = 113,
-    bad_certificate_hash_value      = 114
+    bad_certificate_hash_value      = 114,
+
+    unknown_psk_identity    = 115
 
 } SSL3AlertDescription;
 
@@ -213,6 +217,9 @@ typedef enum {
     kea_dh_anon, 
     kea_dh_anon_export, 
     kea_rsa_fips,
+    kea_srp,
+    kea_srp_rsa,
+    kea_srp_dss,
     kea_ecdh_ecdsa,
     kea_ecdhe_ecdsa,
     kea_ecdh_rsa,

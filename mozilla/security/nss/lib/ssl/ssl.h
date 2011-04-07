@@ -354,6 +354,41 @@ SSL_IMPORT PRFileDesc *SSL_ReconfigFD(PRFileDesc *model, PRFileDesc *fd);
  */
 SSL_IMPORT SECStatus SSL_SetPKCS11PinArg(PRFileDesc *fd, void *a);
 
+
+/*
+ * Set the client side user name and password non-interactively.
+ */
+SSL_IMPORT SECStatus SSL_SetUserLogin(PRFileDesc *fd, char *u, char *p);
+
+/*
+ * This sets the client side callback for SSL to retrieve the user password.
+ *	 fd - the file descriptor for the connection in question
+ * func - callback function pointer
+ *   pw - user password
+ */
+
+typedef SECStatus (PR_CALLBACK *SSLUserPasswdCB)(PRFileDesc *fd,
+                                                 SECItem *pw, void *arg);
+
+SSL_IMPORT SECStatus SSL_UserPasswdHook(PRFileDesc *fd, SSLUserPasswdCB func,
+                                                                void *arg);
+
+/*
+ * This sets the server side callback function for SSL to retrieve the SRP
+ * authentication parameters associated with a specific user login.
+ *   fd - the file descriptor of the connection
+ * func - pointer to the callback function
+ * user - username to lookup in app database
+ *  srp - SRP auth paramters supplied to SSL by app
+ */
+
+typedef SECStatus (PR_CALLBACK *SSLGetSRPParamsCB)(PRFileDesc *fd,
+                                                     SECKEYSRPParams *srp,
+                                                     void *arg);
+
+SSL_IMPORT SECStatus SSL_GetSRPParamsHook(PRFileDesc *fd,
+                                            SSLGetSRPParamsCB func, void *arg);
+
 /*
 ** This is a callback for dealing with server certs that are not authenticated
 ** by the client.  The client app can decide that it actually likes the

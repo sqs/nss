@@ -89,7 +89,8 @@ typedef enum {
     NSSLOWKEYRSAKey = 1, 
     NSSLOWKEYDSAKey = 2, 
     NSSLOWKEYDHKey = 4,
-    NSSLOWKEYECKey = 5
+    NSSLOWKEYECKey = 5,
+    NSSLOWKEYSRPKey = 6
 } NSSLOWKEYType;
 
 /*
@@ -103,6 +104,7 @@ struct NSSLOWKEYPublicKeyStr {
 	DSAPublicKey dsa;
 	DHPublicKey  dh;
 	ECPublicKey  ec;
+    SRPPublicKey srp;
     } u;
 };
 typedef struct NSSLOWKEYPublicKeyStr NSSLOWKEYPublicKey;
@@ -120,6 +122,7 @@ struct NSSLOWKEYPrivateKeyStr {
 	DSAPrivateKey dsa;
 	DHPrivateKey  dh;
 	ECPrivateKey  ec;
+	SRPPrivateKey srp;
     } u;
 };
 typedef struct NSSLOWKEYPrivateKeyStr NSSLOWKEYPrivateKey;

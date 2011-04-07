@@ -136,6 +136,10 @@ SSL_ReHandshakeWithTimeout;
 ;+NSS_3.11.8 {      # NSS 3.11.8 release
 ;+    global:
 SSL_CanBypass;
+
+SSL_SetUserLogin;
+SSL_UserPasswdHook;
+SSL_GetSRPParamsHook;
 ;+    local:
 ;+*;
 ;+};

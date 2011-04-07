@@ -77,6 +77,9 @@ pk11_MakeIDFromPublicKey(SECKEYPublicKey *pubKey)
     case ecKey:
       pubKeyIndex = &pubKey->u.ec.publicValue;
       break;      
+    case srpKey:
+      pubKeyIndex = &pubKey->u.srp.pub;
+      break;      
     default:
       return NULL;
     }
@@ -588,6 +591,7 @@ PK11_ExtractPublicKey(PK11SlotInfo *slot,KeyType keyType,CK_OBJECT_HANDLE id)
     CK_ATTRIBUTE *attrs= template;
     CK_ATTRIBUTE *modulus,*exponent,*base,*prime,*subprime,*value;
     CK_ATTRIBUTE *ecparams;
+    CK_ATTRIBUTE *salt, *user;
 
     /* if we didn't know the key type, get it */
     if (keyType== nullKey) {
@@ -609,6 +613,9 @@ PK11_ExtractPublicKey(PK11SlotInfo *slot,KeyType keyType,CK_OBJECT_HANDLE id)
 	case CKK_EC:
 	    keyType = ecKey;
 	    break;
+    case CKK_SRP:
+        keyType = srpKey;
+        break;
 	default:
 	    PORT_SetError( SEC_ERROR_BAD_KEY );
 	    return NULL;
@@ -735,6 +742,37 @@ PK11_ExtractPublicKey(PK11SlotInfo *slot,KeyType keyType,CK_OBJECT_HANDLE id)
 	crv = pk11_get_Decoded_ECPoint(arena,
 		 &pubKey->u.ec.DEREncodedParams, value, 
 		 &pubKey->u.ec.publicValue);
+	break;
+    case srpKey:
+	user = attrs;
+	PK11_SETATTRS(attrs, CKA_NSS_SRP_USER, NULL, 0); attrs++; 
+	modulus = attrs;
+	PK11_SETATTRS(attrs, CKA_MODULUS, NULL, 0); attrs++; 
+	base = attrs;
+	PK11_SETATTRS(attrs, CKA_BASE, NULL, 0); attrs++; 
+	salt = attrs;
+	PK11_SETATTRS(attrs, CKA_NSS_SRP_SALT, NULL, 0); attrs++; 
+	value = attrs;
+	PK11_SETATTRS(attrs, CKA_VALUE, NULL, 0); attrs++; 
+	templateCount = attrs - template;
+	PR_ASSERT(templateCount <= sizeof(template)/sizeof(CK_ATTRIBUTE));
+	crv = PK11_GetAttributes(tmp_arena,slot,id,template,templateCount);
+	if (crv != CKR_OK) break;
+
+	if ((keyClass != CKO_PUBLIC_KEY) || (pk11KeyType != CKK_SRP)) {
+	    crv = CKR_OBJECT_HANDLE_INVALID;
+	    break;
+	} 
+	crv = pk11_Attr2SecItem(arena, modulus, &pubKey->u.srp.N);
+	if (crv != CKR_OK) break;
+	crv = pk11_Attr2SecItem(arena, base, &pubKey->u.srp.g);
+	if (crv != CKR_OK) break;
+	crv = pk11_Attr2SecItem(arena, salt, &pubKey->u.srp.s);
+	if (crv != CKR_OK) break;
+	crv = pk11_Attr2SecItem(arena, user, &pubKey->u.srp.u);
+	if (crv != CKR_OK) break;
+	crv = pk11_Attr2SecItem(arena, value, &pubKey->u.srp.pub);
+	if (crv != CKR_OK) break;
 	break;
     case fortezzaKey:
     case nullKey:
@@ -1116,7 +1154,22 @@ PK11_GenerateKeyPairWithOpFlags(PK11SlotInfo *slot,CK_MECHANISM_TYPE type,
       { CKA_ENCRYPT,  NULL, 0},
       { CKA_MODIFIABLE,  NULL, 0},
     };
+    CK_ATTRIBUTE srpPubTemplate[] = {
+      { CKA_MODULUS, NULL, 0 }, 
+      { CKA_BASE, NULL, 0 }, 
+      { CKA_NSS_SRP_SALT, NULL, 0 }, 
+      { CKA_NSS_SRP_USER, NULL, 0 }, 
+      { CKA_NSS_SRP_SECRET, NULL, 0 }, 
+      { CKA_TOKEN,  NULL, 0},
+      { CKA_DERIVE,  NULL, 0},
+      { CKA_WRAP,  NULL, 0},
+      { CKA_VERIFY,  NULL, 0},
+      { CKA_VERIFY_RECOVER,  NULL, 0},
+      { CKA_ENCRYPT,  NULL, 0},
+      { CKA_MODIFIABLE,  NULL, 0},
+    };
     SECKEYECParams * ecParams;
+    SECKEYSRPParams *srpParam;
 
     /*CK_ULONG key_size = 0;*/
     CK_ATTRIBUTE *pubTemplate;
@@ -1316,6 +1369,29 @@ PK11_GenerateKeyPairWithOpFlags(PK11SlotInfo *slot,CK_MECHANISM_TYPE type,
 	    test_mech2.mechanism = CKM_ECDSA;
 	}
         break;
+    case CKM_NSS_SRP_CLIENT_KEY_PAIR_GEN:
+    case CKM_NSS_SRP_SERVER_KEY_PAIR_GEN:
+        srpParam = (SECKEYSRPParams *)param;
+
+        /* copy params into srpPubTemplate */
+        attrs = srpPubTemplate;
+        PK11_SETATTRS(attrs, CKA_MODULUS,srpParam->N.data, srpParam->N.len);
+        attrs++;
+        PK11_SETATTRS(attrs, CKA_BASE, srpParam->g.data, srpParam->g.len);
+        attrs++;
+        PK11_SETATTRS(attrs, CKA_NSS_SRP_SALT, srpParam->s.data, srpParam->s.len);
+        attrs++;
+        PK11_SETATTRS(attrs, CKA_NSS_SRP_USER, srpParam->u.data, srpParam->u.len);
+        attrs++;
+        PK11_SETATTRS(attrs, CKA_NSS_SRP_SECRET, srpParam->secret.data, srpParam->secret.len);
+        attrs++;
+
+        pubTemplate = srpPubTemplate;
+        keyType = srpKey;
+
+        /* XXX why do we care about this? */
+        test_mech.mechanism = CKM_NSS_SRP_DERIVE;
+    break;
     default:
 	PORT_SetError( SEC_ERROR_BAD_KEY );
 	return NULL;

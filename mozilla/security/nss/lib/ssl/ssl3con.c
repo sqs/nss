@@ -119,6 +119,9 @@ static ssl3CipherSuiteCfg cipherSuites[ssl_V3_SUITES_IMPLEMENTED] = {
 #endif /* NSS_ENABLE_ECC */
  { TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,  	   SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
  { TLS_RSA_WITH_AES_256_CBC_SHA,     	   SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
+ { TLS_SRP_SHA_WITH_AES_256_CBC_SHA,       SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
+ { TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA,   SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
+ { TLS_SRP_SHA_DSS_WITH_AES_256_CBC_SHA,   SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
 
 #ifdef NSS_ENABLE_ECC
  { TLS_ECDHE_ECDSA_WITH_RC4_128_SHA,       SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
@@ -142,11 +145,15 @@ static ssl3CipherSuiteCfg cipherSuites[ssl_V3_SUITES_IMPLEMENTED] = {
  { SSL_RSA_WITH_RC4_128_MD5,               SSL_NOT_ALLOWED, PR_TRUE, PR_FALSE},
  { SSL_RSA_WITH_RC4_128_SHA,               SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
  { TLS_RSA_WITH_AES_128_CBC_SHA,     	   SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
+ { TLS_SRP_SHA_WITH_AES_128_CBC_SHA,       SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
+ { TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,   SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
+ { TLS_SRP_SHA_DSS_WITH_AES_128_CBC_SHA,   SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
 
 #ifdef NSS_ENABLE_ECC
  { TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA,  SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
  { TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,    SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
 #endif /* NSS_ENABLE_ECC */
+ { TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA,      SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
  { SSL_DHE_RSA_WITH_3DES_EDE_CBC_SHA,      SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
  { SSL_DHE_DSS_WITH_3DES_EDE_CBC_SHA,      SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
 #ifdef NSS_ENABLE_ECC
@@ -155,6 +162,8 @@ static ssl3CipherSuiteCfg cipherSuites[ssl_V3_SUITES_IMPLEMENTED] = {
 #endif /* NSS_ENABLE_ECC */
  { SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA,     SSL_NOT_ALLOWED, PR_TRUE, PR_FALSE},
  { SSL_RSA_WITH_3DES_EDE_CBC_SHA,          SSL_NOT_ALLOWED, PR_TRUE, PR_FALSE},
+ { TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA,  SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
+ { TLS_SRP_SHA_DSS_WITH_3DES_EDE_CBC_SHA,  SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
 
 
  { SSL_DHE_RSA_WITH_DES_CBC_SHA,           SSL_NOT_ALLOWED, PR_FALSE,PR_FALSE},
@@ -284,6 +293,9 @@ static const ssl3KEADef kea_defs[] =
     {kea_dh_anon,        kt_dh,       sign_null, PR_FALSE,   0, PR_FALSE},
     {kea_dh_anon_export, kt_dh,       sign_null, PR_TRUE,  512, PR_FALSE},
     {kea_rsa_fips,       kt_rsa,      sign_rsa,  PR_FALSE,   0, PR_TRUE },
+    {kea_srp,            kt_srp,      sign_null, PR_FALSE,   0, PR_FALSE},
+    {kea_srp_rsa,        kt_srp,      sign_rsa,  PR_FALSE,   0, PR_FALSE},
+    {kea_srp_dss,        kt_srp,      sign_dsa,  PR_FALSE,   0, PR_FALSE},
 #ifdef NSS_ENABLE_ECC
     {kea_ecdh_ecdsa,     kt_ecdh,     sign_ecdsa,  PR_FALSE, 0, PR_FALSE},
     {kea_ecdhe_ecdsa,    kt_ecdh,     sign_ecdsa,  PR_FALSE,   0, PR_FALSE},
@@ -345,6 +357,21 @@ static const ssl3CipherSuiteDef cipher_suite_defs[] =
 
 
 /* New TLS cipher suites */
+    {TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA, cipher_3des, 	mac_sha, kea_srp},
+    {TLS_SRP_SHA_WITH_AES_128_CBC_SHA,  cipher_aes_128, mac_sha, kea_srp},
+    {TLS_SRP_SHA_WITH_AES_256_CBC_SHA,  cipher_aes_256, mac_sha, kea_srp},
+    {TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA,
+                                        cipher_3des,    mac_sha, kea_srp_rsa},
+    {TLS_SRP_SHA_DSS_WITH_3DES_EDE_CBC_SHA,
+                                        cipher_3des,    mac_sha, kea_srp_dss},
+    {TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
+                                        cipher_aes_128, mac_sha, kea_srp_rsa},
+    {TLS_SRP_SHA_DSS_WITH_AES_128_CBC_SHA,
+                                        cipher_aes_128, mac_sha, kea_srp_dss},
+    {TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA,
+                                        cipher_aes_256, mac_sha, kea_srp_rsa},
+    {TLS_SRP_SHA_DSS_WITH_AES_256_CBC_SHA,
+                                        cipher_aes_256, mac_sha, kea_srp_dss},
     {TLS_RSA_WITH_AES_128_CBC_SHA,     	cipher_aes_128, mac_sha, kea_rsa},
     {TLS_DHE_DSS_WITH_AES_128_CBC_SHA, 	cipher_aes_128, mac_sha, kea_dhe_dss},
     {TLS_DHE_RSA_WITH_AES_128_CBC_SHA, 	cipher_aes_128, mac_sha, kea_dhe_rsa},
@@ -421,7 +448,8 @@ static const CK_MECHANISM_TYPE kea_alg_defs[] = {
     CKM_RSA_PKCS,
     CKM_DH_PKCS_DERIVE,
     CKM_KEA_KEY_DERIVE,
-    CKM_ECDH1_DERIVE
+    CKM_ECDH1_DERIVE,
+    CKM_NSS_SRP_DERIVE
 };
 
 typedef struct SSLCipher2MechStr {
@@ -696,12 +724,27 @@ ssl3_config_match_init(sslSocket *ss)
 	    }
 #endif /* NSS_ENABLE_ECC */
 
+        /* XXX this should be merged with switch(kea) from above */
+        switch (cipher_def->key_exchange_alg) {
+        case kea_srp_rsa:
+		    svrAuth = ss->serverCerts + kt_rsa;
+            break;
+        case kea_srp_dss:
+		    svrAuth = ss->serverCerts + kt_null; /* don't ask me..*/
+            break;
+	    default:
+		    svrAuth = ss->serverCerts + exchKeyType;
+            break;
+        }
+
+
 	    /* Mark the suites that are backed by real tokens, certs and keys */
 	    suite->isPresent = (PRBool)
 		(((exchKeyType == kt_null) ||
 		   ((!isServer || (svrAuth->serverKeyPair &&
 		                   svrAuth->SERVERKEY &&
-				   svrAuth->serverCertChain)) &&
+				   svrAuth->serverCertChain) ||
+             cipher_def->key_exchange_alg == kea_srp) &&
 		    PK11_TokenExists(kea_alg_defs[exchKeyType]))) &&
 		((cipher_alg == calg_null) || PK11_TokenExists(cipher_mech)));
 	    if (suite->isPresent)
@@ -1077,6 +1120,57 @@ ssl3_ComputeExportRSAKeyHash(SECItem modulus, SECItem publicExponent,
     PRINT_BUF(95, (NULL, "RSAkey hash: SHA1 result", hashes->sha, SHA1_LENGTH));
 
     if (hashBuf != buf && hashBuf != NULL)
+    	PORT_Free(hashBuf);
+    return rv;
+}
+
+/* Caller must set hiLevel error code.
+ * Called from ssl3_SendSRPServerKeyExchange */
+static SECStatus
+ssl3_ComputeSRPKeyHash(SECItem *N, SECItem *g, SECItem *s, SECItem *B,
+			     SSL3Random *client_rand, SSL3Random *server_rand,
+			     SSL3Hashes *hashes, PRBool bypassPKCS11)
+{
+    PRUint8     * hashBuf;
+    PRUint8     * pBuf;
+    SECStatus     rv 		= SECFailure;
+    unsigned int  bufLen;
+
+    bufLen = 2*SSL3_RANDOM_LENGTH + N->len + 2 + g->len + 2
+                                  + s->len + 1 + B->len + 2;
+
+    hashBuf = PORT_Alloc(bufLen);
+	if (!hashBuf) {
+	    return SECFailure;
+	}
+
+    memcpy(hashBuf, client_rand, SSL3_RANDOM_LENGTH); 
+    	pBuf = hashBuf + SSL3_RANDOM_LENGTH;
+    memcpy(pBuf, server_rand, SSL3_RANDOM_LENGTH);
+    	pBuf += SSL3_RANDOM_LENGTH;
+    pBuf[0] = (PRUint8)(N->len >> 8);
+    pBuf[1] = (PRUint8)(N->len);
+        pBuf+=2;
+    memcpy(pBuf, N->data, N->len);
+    	pBuf += N->len;
+    pBuf[0] = (PRUint8)(g->len >> 8);
+    pBuf[1] = (PRUint8)(g->len);
+        pBuf+=2;
+    memcpy(pBuf, g->data, g->len);
+    	pBuf += g->len;
+    pBuf[0] = (PRUint8)(s->len);
+        pBuf+=1;
+    memcpy(pBuf, s->data, s->len);
+    	pBuf += s->len;
+    pBuf[0] = (PRUint8)(B->len >> 8);
+    pBuf[1] = (PRUint8)(B->len);
+        pBuf+=2;
+    memcpy(pBuf, B->data, B->len);
+    	pBuf += B->len;
+
+    rv = ssl3_ComputeCommonKeyHash(hashBuf, bufLen, hashes, bypassPKCS11);
+
+    if (hashBuf)
     	PORT_Free(hashBuf);
     return rv;
 }
@@ -2657,6 +2751,8 @@ ssl3_HandleAlert(sslSocket *ss, sslBuffer *buf)
 			error = SSL_ERROR_BAD_CERT_STATUS_RESPONSE_ALERT; break;
     case bad_certificate_hash_value: 
 			error = SSL_ERROR_BAD_CERT_HASH_VALUE_ALERT;      break;
+    case unknown_psk_identity:
+            error = SSL_ERROR_UNKNOWN_PSK_IDENTITY_ALERT;     break;
     default: 		error = SSL_ERROR_RX_UNKNOWN_ALERT;               break;
     }
     if (level == alert_fatal) {
@@ -2822,7 +2918,8 @@ ssl3_DeriveMasterSecret(sslSocket *ss, PK11SymKey *pms)
      * data into a 48-byte value. 
      */
     PRBool    isDH = (PRBool) ((ss->ssl3.hs.kea_def->exchKeyType == kt_dh) ||
-	                       (ss->ssl3.hs.kea_def->exchKeyType == kt_ecdh));
+	                       (ss->ssl3.hs.kea_def->exchKeyType == kt_ecdh) ||
+                           (ss->ssl3.hs.kea_def->exchKeyType == kt_srp));
     SECStatus         rv = SECFailure;
     CK_MECHANISM_TYPE master_derive;
     CK_MECHANISM_TYPE key_derive;
@@ -4720,8 +4817,242 @@ loser:
     return rv;
 }
 
+/* Read srp values from datastream and verify the signature
+ * if requiried by cipher. Save parameters to ss->sec.peerKey.
+ *
+ * called from ssl3_HandleServerKeyExchange
+ */
+static SECStatus
+ssl3_HandleSRPServerKeyExchange(sslSocket *ss, SSL3Opaque *b,
+                                                PRUint32 length) {
+
+    SECItem         signature  = {siBuffer, NULL, 0};
+    PRArenaPool     *arena     = NULL;
+    SECKEYPublicKey *peerKey   = NULL;
+    SECStatus   rv;
+    SSL3Hashes  hashes;
+	SECItem     srp_N, srp_g, srp_s, srp_ppub;
+    int         errCode;
+
+    rv = ssl3_ConsumeHandshakeVariable(ss, &srp_N, 2, &b, &length);
+    if (rv != SECSuccess) {
+	    goto loser;		/* malformed. */
+	}
+    rv = ssl3_ConsumeHandshakeVariable(ss, &srp_g, 2, &b, &length);
+    if (rv != SECSuccess) {
+	    goto loser;		/* malformed. */
+	}
+    rv = ssl3_ConsumeHandshakeVariable(ss, &srp_s, 1, &b, &length);
+    if (rv != SECSuccess) {
+	    goto loser;		/* malformed. */
+	}
+    rv = ssl3_ConsumeHandshakeVariable(ss, &srp_ppub, 2, &b, &length);
+    if (rv != SECSuccess) {
+	    goto loser;		/* malformed. */
+	}
+
+    if (ss->ssl3.hs.kea_def->kea != kea_srp) { /* there MUST be a signature */
+    rv = ssl3_ConsumeHandshakeVariable(ss, &signature, 2, &b, &length);
+    if (rv != SECSuccess) {
+        goto loser;		/* malformed. */
+    }
+    rv = ssl3_ComputeSRPKeyHash(&srp_N, &srp_g, &srp_s, &srp_ppub,
+                                &ss->ssl3.hs.client_random,
+			                    &ss->ssl3.hs.server_random,
+			                    &hashes, ss->opt.bypassPKCS11);
+    if (rv != SECSuccess) {
+	    errCode = ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);
+	    goto alert_loser;
+	}
+    rv = ssl3_VerifySignedHashes(&hashes, ss->sec.peerCert, &signature,
+			                                    PR_TRUE, ss->pkcs11PinArg);
+	if (rv != SECSuccess)  {
+	    errCode = ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);
+	    goto alert_loser;
+    }
+    }
+
+    /* all ok, save and return */
+    arena = PORT_NewArena(DER_DEFAULT_CHUNKSIZE);
+	if (arena == NULL) {
+        return SECFailure;
+	}
+    ss->sec.peerKey = peerKey = PORT_ArenaZNew(arena, SECKEYPublicKey);
+    if (peerKey == NULL) {
+        return SECFailure;
+	}
+	peerKey->arena              = arena;
+	peerKey->keyType            = srpKey;
+	peerKey->pkcs11Slot         = NULL;
+	peerKey->pkcs11ID           = CK_INVALID_HANDLE;
+
+	if (SECITEM_CopyItem(arena, &peerKey->u.srp.N,    &srp_N) ||
+	    SECITEM_CopyItem(arena, &peerKey->u.srp.g,    &srp_g) ||
+	    SECITEM_CopyItem(arena, &peerKey->u.srp.s,    &srp_s) ||
+	    SECITEM_CopyItem(arena, &peerKey->u.srp.ppub, &srp_ppub)) {
+        return SECFailure;
+    }
+    return SECSuccess;
+
+alert_loser:
+    (void)SSL3_SendAlert(ss, alert_fatal, illegal_parameter);
+loser:
+    PORT_SetError(errCode);
+    return SECFailure;
+}
+
+/* Calculate ClientKeyExchange and Pre-Master-Secret via SRP_GenKeys(),
+ * then send ClientKeyExchange and derive SSL master key
+ *
+ * called from ssl3_SendClientKeyExchange()
+ */
+static SECStatus
+ssl3_SendSRPClientKeyExchange(sslSocket *ss, SECKEYPublicKey * pubKey) {
+
+    SECKEYSRPParams  *srpParam;
+    SECStatus        rv;
+
+    PORT_Assert( ss->opt.noLocks || ssl_HaveSSL3HandshakeLock(ss) );
+    PORT_Assert( ss->opt.noLocks || ssl_HaveXmitBufLock(ss));
+
+    srpParam = PORT_ZAlloc(sizeof(SECKEYSRPParams));
+    if (!srpParam) {
+        ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);
+        goto loser;
+    }
+
+    /* PW-Callback overrides SSL_SetUserLogin. If both fail to
+     * provide a password, the token must know it or fail. */
+    if (ss->getUserPasswd) {
+        if (!ss->sec.userPasswd)
+            ss->sec.userPasswd = SECITEM_AllocItem(NULL,NULL,0);
+        SECITEM_FreeItem(ss->sec.userPasswd, PR_FALSE);
+        ss->getUserPasswd(ss->fd, ss->sec.userPasswd, ss->getUserPasswdArg);
+    }
+    if (ss->sec.userPasswd) {
+        srpParam->secret.data = ss->sec.userPasswd->data;
+        srpParam->secret.len  = ss->sec.userPasswd->len;
+        ss->sec.userPasswd = NULL;
+    }
+
+    /* calculate client key pair and PMS, then send key exchange data */
+    if (ss->opt.bypassPKCS11) {
+        SECItem pms = {0, NULL, 0};
+        SRPPrivateKey *prvKey;
+        SRPKeyPairParams keyPairParam;
+        keyPairParam.N.data   = pubKey->u.srp.N.data;
+        keyPairParam.N.len    = pubKey->u.srp.N.len;
+        keyPairParam.g.data   = pubKey->u.srp.g.data;
+        keyPairParam.g.len    = pubKey->u.srp.g.len;
+        keyPairParam.secret.data = srpParam->secret.data;
+        keyPairParam.secret.len  = srpParam->secret.len;
+
+        rv = SRP_NewClientKeyPair(&prvKey, &keyPairParam);
+        if (rv != SECSuccess) goto loser; /* err set by SRP_ClientDerive */
+
+        SRPDeriveParams deriveParam;
+        deriveParam.N.data   = pubKey->u.srp.N.data;
+        deriveParam.N.len    = pubKey->u.srp.N.len;
+        deriveParam.g.data   = pubKey->u.srp.g.data;
+        deriveParam.g.len    = pubKey->u.srp.g.len;
+        deriveParam.s.data   = pubKey->u.srp.s.data;
+        deriveParam.s.len    = pubKey->u.srp.s.len;
+        deriveParam.u.data   = ss->sec.userName->data;
+        deriveParam.u.len    = ss->sec.userName->len;
+        deriveParam.ppub.data= pubKey->u.srp.ppub.data;
+        deriveParam.ppub.len = pubKey->u.srp.ppub.len;
 
 
+        if (SECSuccess != SRP_ClientDerive(prvKey, &deriveParam, &pms)) {
+            goto derive_fail;
+        }
+        
+        /* client key exchange data */
+        rv = ssl3_AppendHandshakeHeader(ss, client_key_exchange,
+                                                prvKey->pubKey.len + 2);
+        if (rv != SECSuccess) goto loser; /* err set by ssl3_AppendHandshake* */
+        rv = ssl3_AppendHandshakeVariable(ss, prvKey->pubKey.data,
+                                                prvKey->pubKey.len, 2);
+        if (rv != SECSuccess) goto loser; /* err set by ssl3_AppendHandshake* */
+        
+        /* init pending cipher spec*/
+        rv = ssl3_MasterKeyDeriveBypass(ss->ssl3.pwSpec,
+                    (unsigned char *)&ss->ssl3.hs.client_random,
+                    (unsigned char *)&ss->ssl3.hs.server_random,
+                    &pms, PR_TRUE, PR_FALSE);
+        if (rv != SECSuccess) {
+            ss->ssl3.pwSpec->msItem.data = ss->ssl3.pwSpec->raw_master_secret;
+            ss->ssl3.pwSpec->msItem.len  = SSL3_MASTER_SECRET_LENGTH;
+            PK11_GenerateRandom(ss->ssl3.pwSpec->msItem.data,
+                                                SSL3_MASTER_SECRET_LENGTH);
+        }
+        rv = ssl3_InitPendingCipherSpec(ss, NULL);
+        
+        SECITEM_FreeItem(&pms, PR_FALSE);
+        PORT_FreeArena(prvKey->arena, PR_TRUE);
+    } else { /* PK11 path */
+        PK11SymKey       *pms       = NULL;
+        SECKEYPrivateKey *prvKey    = NULL;
+        SECKEYPublicKey  *newPub    = NULL;
+    
+        srpParam->N.data = pubKey->u.srp.N.data;
+        srpParam->N.len  = pubKey->u.srp.N.len;
+        srpParam->g.data = pubKey->u.srp.g.data;
+        srpParam->g.len  = pubKey->u.srp.g.len;
+        srpParam->s.data = pubKey->u.srp.s.data;
+        srpParam->s.len  = pubKey->u.srp.s.len;
+        srpParam->u.data = ss->sec.userName->data;
+        srpParam->u.len  = ss->sec.userName->len;
+
+        /* The token handles (missing) info supplied in srpParam
+         * The template not actually involved in key generation,
+         * but it's important in the server key exchange */
+
+        prvKey = SECKEY_CreateSRPPrivateKey(srpParam, &newPub, PR_FALSE, NULL);
+        if (!prvKey) {
+	        ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
+	        rv = SECFailure;
+    	    goto loser;
+        }
+        SECITEM_CopyItem(newPub->arena, &newPub->u.srp.ppub, &pubKey->u.srp.ppub);
+    
+        /* Now all data is in newPub and prvKey, compute pms with them */
+        pms = PK11_PubDerive(prvKey, newPub, PR_FALSE, NULL, NULL,
+    			    CKM_NSS_SRP_DERIVE, CKM_TLS_MASTER_KEY_DERIVE, CKF_DERIVE, 0, NULL);
+
+        if (!pms) {
+            goto derive_fail;
+        }
+    
+        /* init pending cipher spec*/
+        rv = ssl3_InitPendingCipherSpec(ss, pms);
+
+
+        /* client key exchange data */
+        rv = ssl3_AppendHandshakeHeader(ss, client_key_exchange,
+                                                    newPub->u.srp.pub.len + 2);
+        if (rv != SECSuccess) goto loser; /* err set by ssl3_AppendHandshake* */
+        rv = ssl3_AppendHandshakeVariable(ss, newPub->u.srp.pub.data,
+                                                    newPub->u.srp.pub.len, 2);
+        if (rv != SECSuccess) goto loser; /* err set by ssl3_AppendHandshake* */
+    
+        if (pms) PK11_FreeSymKey(pms);
+        SECKEY_DestroyPublicKey(newPub);
+    } /* end of PK11 path */
+
+loser:
+    SECITEM_FreeItem(ss->sec.userName, PR_TRUE);
+    SECITEM_ZfreeItem(ss->sec.userPasswd, PR_TRUE);
+    PORT_Free(srpParam);
+    /* caller frees pubKey */
+    return rv;
+derive_fail:
+   if (PORT_GetError() == SEC_ERROR_SRP_UNSUPPORTED_GROUP)
+       SSL3_SendAlert(ss, alert_fatal, insufficient_security);
+   if (PORT_GetError() == SEC_ERROR_SRP_ILLEGAL_PARAMETER)
+       SSL3_SendAlert(ss, alert_fatal, illegal_parameter);
+   return SECFailure;
+}
 
 
 /* Called from ssl3_HandleServerHelloDone(). */
@@ -4781,7 +5112,9 @@ ssl3_SendClientKeyExchange(sslSocket *ss)
 	rv = ssl3_SendECDHClientKeyExchange(ss, serverKey);
 	break;
 #endif /* NSS_ENABLE_ECC */
-
+    case kt_srp:
+	rv = ssl3_SendSRPClientKeyExchange(ss, serverKey);
+	break;
     default:
 	/* got an unknown or unsupported Key Exchange Algorithm.  */
 	SEND_ALERT
@@ -5210,7 +5543,8 @@ ssl3_HandleServerKeyExchange(sslSocket *ss, SSL3Opaque *b, PRUint32 length)
 	desc    = unexpected_message;
 	goto alert_loser;
     }
-    if (ss->sec.peerCert == NULL) {
+    if (ss->sec.peerCert == NULL &&
+	ss->ssl3.hs.suite_def->key_exchange_alg != kea_srp) {
 	errCode = SSL_ERROR_RX_UNEXPECTED_SERVER_KEY_EXCH;
 	desc    = unexpected_message;
 	goto alert_loser;
@@ -5399,6 +5733,13 @@ ssl3_HandleServerKeyExchange(sslSocket *ss, SSL3Opaque *b, PRUint32 length)
 	rv = ssl3_HandleECDHServerKeyExchange(ss, b, length);
 	return rv;
 #endif /* NSS_ENABLE_ECC */
+    case kt_srp:
+	rv = ssl3_HandleSRPServerKeyExchange(ss, b, length);
+    if (rv != SECSuccess) {
+	    errCode = ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);
+	    goto alert_loser;
+    }
+    return rv;
 
     default:
     	desc    = handshake_failure;
@@ -5890,15 +6231,19 @@ ssl3_SendServerHelloSequence(sslSocket *ss)
     if (rv != SECSuccess) {
 	return rv;	/* err code is set. */
     }
-    rv = ssl3_SendCertificate(ss);
-    if (rv != SECSuccess) {
-	return rv;	/* error code is set. */
-    }
     /* We have to do this after the call to ssl3_SendServerHello,
      * because kea_def is set up by ssl3_SendServerHello().
      */
     kea_def = ss->ssl3.hs.kea_def;
     ss->ssl3.hs.usedStepDownKey = PR_FALSE;
+
+
+    if (kea_def->kea != kea_srp) { /* SRP auth only */
+        rv = ssl3_SendCertificate(ss);
+        if (rv != SECSuccess) {
+	        return rv;	/* error code is set. */
+        }
+    }
 
     if (kea_def->is_limited && kea_def->exchKeyType == kt_rsa) {
 	/* see if we can legally use the key in the cert. */
@@ -5931,6 +6276,11 @@ ssl3_SendServerHelloSequence(sslSocket *ss)
 	    return rv;	/* err code was set. */
 	}
 #endif /* NSS_ENABLE_ECC */
+    } else if ( kea_def->exchKeyType == kt_srp ) {
+        rv = ssl3_SendServerKeyExchange(ss);
+	    if (rv != SECSuccess) {
+		    return rv;	/* err code was set. */
+        }
     }
 
     if (ss->opt.requestCertificate) {
@@ -6954,6 +7304,196 @@ ssl3_SendServerHello(sslSocket *ss)
     return SECSuccess;
 }
 
+/* ssl3_SendSRPServerKeyExchange()
+ * called by ssl3_SendServerKeyExchange()
+ *
+ * - make sure we got a userid in the srp client hello extension
+ * - retrieve verifier and parameters for the user via callback func
+ * - if user nonexistant, CB makes something up if it wants to
+ * - continue by creating and sending the SRP key exchange data:
+ *
+ *  N, g, s, v = <read from password file>
+ *  b = random()
+ *  k = SHA1(N | PAD(g))
+ *  B = k*v + g^b % N
+ *  send (N,g,s,B)
+ *
+ *  save values b,v,N for calculation of pms in ssl3_HandleSRPClientKeyExchange
+ */
+
+SECStatus
+ssl3_SendSRPServerKeyExchange(sslSocket *ss) {
+
+    int               bytes       = 0;
+    const ssl3KEADef *kea_def     = ss->ssl3.hs.kea_def;
+    SECItem           signed_hash = {siBuffer, NULL, 0};
+    SECStatus         rv          = SECFailure;
+    SECKEYSRPPublicKey *srp       = NULL;
+    SECKEYPublicKey  *pubKey      = NULL;
+    SECKEYPrivateKey *prvKey      = NULL;
+    SECKEYSRPParams  *srpParams;
+    SSL3Hashes        hashes;
+    
+    /* send error if no userid was supplied in Client Hello */
+    if (!ss->sec.userName || !ss->sec.userName->data)
+        goto unknown_id;
+
+    /* Ask application for SRP parameters for specified username.
+     * Information provided via callback overrides data set on token.
+     * If no params provided, the token must supply them or fail.
+     * Callback may fail for nonexistant user.
+     */
+
+    srpParams = PORT_ZAlloc(sizeof(SECKEYSRPParams));
+    if (!srpParams) goto no_memory;
+
+    srpParams->u.data = ss->sec.userName->data;
+    srpParams->u.len = ss->sec.userName->len;
+
+    if (ss->getSRPParams) {
+        rv = ss->getSRPParams(ss->fd, srpParams, ss->getSRPParamsArg);
+        if (rv != SECSuccess) {
+            SECITEM_FreeItem(&srpParams->N, PR_FALSE);
+            SECITEM_FreeItem(&srpParams->g, PR_FALSE);
+            SECITEM_FreeItem(&srpParams->s, PR_FALSE);
+            SECITEM_ZfreeItem(&srpParams->secret, PR_FALSE);
+            PORT_Free(srpParams);
+            goto unknown_id;
+        }
+    }
+
+    /* create SRP server key pair */
+    if (ss->opt.bypassPKCS11) {
+        /* srpParams, keyPairParams are temporary. pubKey and prvKey have
+         * own arenas and are saved for ssl3_HandleSRPClientKeyExchange */
+        SRPPrivateKey *srpPrv;
+        SRPKeyPairParams keyPairParams;
+
+        PRArenaPool *arena = PORT_NewArena(DER_DEFAULT_CHUNKSIZE);
+        if (!arena) goto no_memory;
+
+        keyPairParams.N.data = srpParams->N.data;
+        keyPairParams.N.len  = srpParams->N.len;
+        keyPairParams.g.data = srpParams->g.data;
+        keyPairParams.g.len  = srpParams->g.len;
+        keyPairParams.secret.data = srpParams->secret.data;
+        keyPairParams.secret.len  = srpParams->secret.len;
+
+        rv = SRP_NewServerKeyPair(&srpPrv, &keyPairParams);
+        if (rv != SECSuccess) {
+    	    ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
+            return rv;
+        }
+        prvKey = (SECKEYPrivateKey *)srpPrv;
+
+        /* create pubKey from temporary stuff */
+        pubKey = PORT_ArenaZAlloc(arena, sizeof(SECKEYPublicKey));
+        if (!pubKey) goto no_memory;
+        pubKey->arena = arena;
+        srp = &pubKey->u.srp;
+
+        SECITEM_CopyItem(arena, &srp->N,   &srpParams->N);
+        SECITEM_CopyItem(arena, &srp->g,   &srpParams->g);
+        SECITEM_CopyItem(arena, &srp->s,   &srpParams->s);
+        SECITEM_CopyItem(arena, &srp->u,   &srpParams->u);
+        SECITEM_CopyItem(arena, &srp->pub, &srpPrv->pubKey);
+        
+    } else {
+
+        /* input: srpParams, output: prvKey = b,B,v, pubKey = N,g,s,u,B */
+        prvKey = SECKEY_CreateSRPPrivateKey(srpParams, &pubKey, PR_TRUE, NULL);
+        if (!prvKey) {
+    	    ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
+            rv = SECFailure;
+    	    goto cleanup;
+        }
+        srp = &pubKey->u.srp;
+    }
+
+    /* send N,g,s,B as ServerKeyExchange to Client */
+    /* optionally include signature for additional DSS/RSA auth */
+
+    if (kea_def->kea != kea_srp) { /* we need a RSA/DSA signature */
+        rv = ssl3_ComputeSRPKeyHash(&srp->N, &srp->g, &srp->s, &srp->pub,
+				                             &ss->ssl3.hs.client_random,
+				                             &ss->ssl3.hs.server_random,
+				                             &hashes, ss->opt.bypassPKCS11);
+        if (rv != SECSuccess) {
+	        ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);
+	        goto loser;
+        }
+        /* look if we have a certificate for selected algo */
+        if (kea_def->kea == kea_srp_rsa)
+            bytes = kt_rsa;
+        else
+            bytes = kt_null;
+
+        if (!(&ss->serverCerts[bytes])) {
+            /* ciphersuite signing algo does not match supplied certificate */
+            PORT_SetError(SSL_ERROR_CERT_KEA_MISMATCH);
+            return SECFailure;
+        }
+        rv = ssl3_SignHashes(&hashes, ss->serverCerts[bytes].SERVERKEY, 
+                                                     &signed_hash, PR_TRUE);
+        bytes = 2 + signed_hash.len;
+    }
+
+    bytes += srp->N.len + srp->g.len + srp->s.len + srp->pub.len + 7;
+
+    rv = ssl3_AppendHandshakeHeader(ss, server_key_exchange, bytes);
+    if (rv != SECSuccess)
+	    return rv; 		/* err set by AppendHandshake. */
+
+    rv = ssl3_AppendHandshakeVariable(ss, srp->N.data, srp->N.len, 2);
+    if (rv != SECSuccess)
+	    return rv; 		/* err set by AppendHandshake. */
+
+    rv = ssl3_AppendHandshakeVariable(ss, srp->g.data, srp->g.len, 2);
+    if (rv != SECSuccess)
+	    return rv; 		/* err set by AppendHandshake. */
+
+    rv = ssl3_AppendHandshakeVariable(ss, srp->s.data, srp->s.len, 1);
+    if (rv != SECSuccess)
+	    return rv; 		/* err set by AppendHandshake. */
+
+    rv = ssl3_AppendHandshakeVariable(ss, srp->pub.data, srp->pub.len, 2);
+    if (rv != SECSuccess)
+	    return rv; 		/* err set by AppendHandshake. */
+
+    if (kea_def->kea != kea_srp) {
+	    rv = ssl3_AppendHandshakeVariable(ss, signed_hash.data,
+	                                          signed_hash.len, 2);
+	    if (rv != SECSuccess) {
+	        return rv; 	/* err set by AppendHandshake. */
+        }
+        SECITEM_FreeItem(&signed_hash, PR_FALSE);
+    }
+
+    /* save prvKey / pubKey for use in HandleSRPClientExchange
+     * XXX in bypassPK11, prvKey is no PK11 object and must be casted */
+    ssl3KeyPair *srpPair = ssl3_NewKeyPair(prvKey, pubKey);
+    ss->serverCerts[kt_srp].serverKeyPair = srpPair;
+
+cleanup:
+    SECITEM_FreeItem(&srpParams->N, PR_FALSE);
+    SECITEM_FreeItem(&srpParams->g, PR_FALSE);
+    SECITEM_FreeItem(&srpParams->s, PR_FALSE);
+    SECITEM_ZfreeItem(&srpParams->secret, PR_FALSE);
+    SECITEM_FreeItem(ss->sec.userName, PR_TRUE);
+    if (srpParams) PORT_Free(srpParams);
+    return rv;
+loser:
+    PORT_SetError(SSL_ERROR_INTERNAL_ERROR_ALERT);
+    (void)SSL3_SendAlert(ss, alert_fatal, internal_error);
+    return SECFailure;
+unknown_id:
+    PORT_SetError(SSL_ERROR_UNKNOWN_PSK_IDENTITY_ALERT);
+    (void)SSL3_SendAlert(ss, alert_fatal, unknown_psk_identity);
+    return SECFailure;
+no_memory:
+    ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);
+    return SECFailure;
+}
 
 static SECStatus
 ssl3_SendServerKeyExchange(sslSocket *ss)
@@ -7038,7 +7578,9 @@ const ssl3KEADef *     kea_def     = ss->ssl3.hs.kea_def;
 	return rv;
     }
 #endif /* NSS_ENABLE_ECC */
-
+    case kt_srp:
+        rv = ssl3_SendSRPServerKeyExchange(ss);
+	    return rv;
     case kt_dh:
     case kt_null:
     default:
@@ -7391,6 +7933,101 @@ double_bypass:
     return SECSuccess;
 }
 
+/* 
+ * extract SRP value A from ClientKeyExchange
+ * calculate pre-master-secret and init cipher specs
+ *
+ * called by ssl3_HandleClientKeyExchange
+ */
+SECStatus
+ssl3_HandleSRPClientKeyExchange(sslSocket *ss, SSL3Opaque *b,
+                                PRUint32 length) {
+    
+    SECItem         ppub; /* peers public key ('A') */
+    sslServerCerts  sc;
+    SECStatus       rv      = SECFailure;
+    SECKEYPublicKey *pubKey = NULL;
+
+    
+    PORT_Assert( ss->opt.noLocks || ssl_HaveRecvBufLock(ss) );
+    PORT_Assert( ss->opt.noLocks || ssl_HaveSSL3HandshakeLock(ss) );
+    
+	rv = ssl3_ConsumeHandshakeVariable(ss, &ppub, 2, &b, &length);
+	if (rv != SECSuccess) {
+	    PORT_SetError(SSL_ERROR_CLIENT_KEY_EXCHANGE_FAILURE);
+	    return SECFailure;
+	}
+
+    sc = ss->serverCerts[kt_srp];
+    pubKey = sc.serverKeyPair->pubKey;
+    
+    SECITEM_CopyItem(pubKey->arena, &pubKey->u.srp.ppub, &ppub);
+
+    if (ss->opt.bypassPKCS11) {
+        SRPPrivateKey    *prvKey  = NULL;
+        SECItem           pms     = { 0, NULL, 0 };
+        SRPDeriveParams   param;
+        
+        prvKey = (SRPPrivateKey *)sc.serverKeyPair->privKey;
+
+        param.N.data = pubKey->u.srp.N.data;
+        param.N.len = pubKey->u.srp.N.len;
+        param.g.data = pubKey->u.srp.g.data;
+        param.g.len = pubKey->u.srp.g.len;
+        param.ppub.data = pubKey->u.srp.ppub.data;
+        param.ppub.len = pubKey->u.srp.ppub.len;
+
+        if (SECSuccess != SRP_ServerDerive(prvKey, &param, &pms))
+            goto derive_fail;
+	
+        ssl_GetSpecWriteLock(ss);
+        /* create MS out of MS, bypassing PKCS11 */
+        rv = ssl3_MasterKeyDeriveBypass(ss->ssl3.pwSpec,
+                            (unsigned char *)&ss->ssl3.hs.client_random,
+                            (unsigned char *)&ss->ssl3.hs.server_random,
+                            &pms, PR_TRUE, PR_FALSE);
+        if (rv != SECSuccess) {
+            ss->ssl3.pwSpec->msItem.data = ss->ssl3.pwSpec->raw_master_secret;
+            ss->ssl3.pwSpec->msItem.len  = SSL3_MASTER_SECRET_LENGTH;
+            PK11_GenerateRandom(ss->ssl3.pwSpec->msItem.data, ss->ssl3.pwSpec->msItem.len);
+        }
+
+        rv = ssl3_InitPendingCipherSpec(ss, NULL);
+        
+        SECITEM_ZfreeItem(&pms, PR_FALSE);
+        PORT_FreeArena(prvKey->arena, PR_TRUE); /* XXX FreeArena does not zeroize! */
+        sc.serverKeyPair->privKey = NULL;
+
+    } else {
+        SECKEYPrivateKey *prvKey  = NULL;
+        PK11SymKey       *pms     = NULL; /* pre-master secret */
+
+        prvKey = sc.serverKeyPair->privKey;
+
+        /* Calculate PMS based on clntKey and public params */
+        pms = PK11_PubDerive(prvKey, pubKey, PR_TRUE, NULL, NULL,
+	    		    CKM_NSS_SRP_DERIVE, CKM_TLS_MASTER_KEY_DERIVE, CKF_DERIVE, 0, NULL);
+
+        if (!pms) {
+            goto derive_fail;
+        }
+
+	    ssl_GetSpecWriteLock(ss);
+        /* derive master secret from pms */
+        rv = ssl3_InitPendingCipherSpec(ss, pms);
+	    ssl_ReleaseSpecWriteLock(ss);
+        
+        PK11_FreeSymKey(pms);
+        /*SECKEY_DestroyPrivateKey(prvKey);*/
+    }
+
+    return rv;
+derive_fail:
+   if (PORT_GetError() == SEC_ERROR_SRP_ILLEGAL_PARAMETER)
+       SSL3_SendAlert(ss, alert_fatal, illegal_parameter);
+   return rv;
+}
+
 
 /* Called from ssl3_HandleHandshakeMessage() when it has deciphered a complete
  * ssl3 ClientKeyExchange message from the remote client
@@ -7463,7 +8100,8 @@ skip:
 	serverKey = serverKeyPair->privKey;
     }
 
-    if (serverKey == NULL) {
+    /* XXX hack, figure out this serverKey thing..*/
+    if (serverKey == NULL && kea_def->exchKeyType != kt_srp) {
     	SEND_ALERT
 	PORT_SetError(SSL_ERROR_NO_SERVER_KEY_FOR_ALG);
 	return SECFailure;
@@ -7504,7 +8142,12 @@ skip:
 	}
 	break;
 #endif /* NSS_ENABLE_ECC */
-
+    case kt_srp:
+        rv = ssl3_HandleSRPClientKeyExchange(ss, b, length);
+	    if (rv != SECSuccess) {
+	    return SECFailure;	/* error code set */
+	}
+    break;
     default:
 	(void) ssl3_HandshakeFailure(ss);
 	PORT_SetError(SEC_ERROR_UNSUPPORTED_KEYALG);
@@ -7672,8 +8315,12 @@ ssl3_SendCertificate(sslSocket *ss)
 	 * using EC certificates.
 	 */
 	if ((ss->ssl3.hs.kea_def->kea == kea_ecdhe_rsa) ||
-	    (ss->ssl3.hs.kea_def->kea == kea_dhe_rsa)) {
+	    (ss->ssl3.hs.kea_def->kea == kea_dhe_rsa)  ||
+	    (ss->ssl3.hs.kea_def->kea == kea_srp_rsa)) {
 	    certIndex = kt_rsa;
+	} else if
+        (ss->ssl3.hs.kea_def->kea == kea_srp_dss) {
+	    certIndex = kt_null;
 	} else {
 	    certIndex = ss->ssl3.hs.kea_def->exchKeyType;
 	}
@@ -7997,7 +8644,9 @@ cert_block:
 	    ss->ssl3.hs.kea_def->kea == kea_ecdhe_ecdsa ||
 	    ss->ssl3.hs.kea_def->kea == kea_ecdhe_rsa ||
 #endif /* NSS_ENABLE_ECC */
-	    ss->ssl3.hs.kea_def->exchKeyType == kt_dh) {
+	    ss->ssl3.hs.kea_def->exchKeyType == kt_dh ||
+	    ss->ssl3.hs.kea_def->kea == kea_srp_dss ||
+	    ss->ssl3.hs.kea_def->kea == kea_srp_rsa) {
 	    ss->ssl3.hs.ws = wait_server_key; /* allow server_key_exchange */
 	}
     }

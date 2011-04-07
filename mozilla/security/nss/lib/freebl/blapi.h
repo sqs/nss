@@ -49,6 +49,24 @@
 SEC_BEGIN_PROTOS
 
 /*
+** SRP algorithms for TLS-SRP
+*/
+
+/* creates DH-like key pair for use with SRP */
+extern SECStatus SRP_NewServerKeyPair(SRPPrivateKey **prvKey,
+                                      SRPKeyPairParams *param);
+
+extern SECStatus SRP_NewClientKeyPair(SRPPrivateKey **prvKey,
+                                      SRPKeyPairParams *param);
+
+/* generates a common key based on prvKey and srp parameters */
+extern SECStatus SRP_ServerDerive(SRPPrivateKey *prvKey,
+                                  SRPDeriveParams *param, SECItem *pms);
+
+extern SECStatus SRP_ClientDerive(SRPPrivateKey *prvKey,
+                                  SRPDeriveParams *param, SECItem *pms);
+
+/*
 ** RSA encryption/decryption. When encrypting/decrypting the output
 ** buffer must be at least the size of the public key modulus.
 */

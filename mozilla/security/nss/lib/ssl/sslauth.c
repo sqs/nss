@@ -233,6 +233,80 @@ SSL_SetPKCS11PinArg(PRFileDesc *s, void *arg)
     return SECSuccess;
 }
 
+/* register callback function to provide the user password */
+SECStatus
+SSL_UserPasswdHook(PRFileDesc *s, SSLUserPasswdCB func, void *arg)
+{
+    sslSocket *ss;
+
+    ss = ssl_FindSocket(s);
+    if (!ss) {
+	SSL_DBG(("%d: SSL[%d]: bad socket in UserPasswdHook",
+		 SSL_GETPID(), s));
+	return SECFailure;
+    }
+
+    ss->getUserPasswd = func;
+    ss->getUserPasswdArg = arg;
+    return SECSuccess;
+}
+
+/* used by client to provide user credentials non-interactively */
+SECStatus
+SSL_SetUserLogin(PRFileDesc *s, char *user, char *passwd)
+{
+    sslSocket *ss = NULL;
+    int len;
+
+    ss = ssl_FindSocket(s);
+    if (!ss) {
+	SSL_DBG(("%d: SSL[%d]: bad socket in GetClientAuthDataHook",
+		 SSL_GETPID(), s));
+	return SECFailure;
+    }
+
+    if (user) {
+        len = PORT_Strlen(user);
+        if (len > MAX_SRP_USERNAME_LENGTH)
+            len = MAX_SRP_USERNAME_LENGTH;
+        ss->sec.userName = SECITEM_AllocItem(NULL, NULL, len);
+        if (!ss->sec.userName) {
+            PORT_SetError(SEC_ERROR_NO_MEMORY);
+            return SECFailure;
+        }
+        PORT_Memcpy(ss->sec.userName->data, user, ss->sec.userName->len);
+    }
+
+    if (passwd) {
+        len = PORT_Strlen(passwd);
+        ss->sec.userPasswd = SECITEM_AllocItem(NULL, NULL, len);
+        if (!ss->sec.userPasswd) {
+            PORT_SetError(SEC_ERROR_NO_MEMORY);
+            return SECFailure;
+        }
+        PORT_Memcpy(ss->sec.userPasswd->data, passwd, ss->sec.userPasswd->len);
+    }
+
+    return SECSuccess;
+}
+
+/* register callback function to provide SRP user authentication params */
+SECStatus
+SSL_GetSRPParamsHook(PRFileDesc *s, SSLGetSRPParamsCB func, void *arg)
+{
+    sslSocket *ss;
+
+    ss = ssl_FindSocket(s);
+    if (!ss) {
+	SSL_DBG(("%d: SSL[%d]: bad socket in GetClientAuthDataHook",
+		 SSL_GETPID(), s));
+	return SECFailure;
+    }
+    
+    ss->getSRPParams = func;
+    ss->getSRPParamsArg = arg;
+    return SECSuccess;
+}
 
 /* This is the "default" authCert callback function.  It is called when a 
  * certificate message is received from the peer and the local application

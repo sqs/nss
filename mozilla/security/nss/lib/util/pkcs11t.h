@@ -431,6 +431,8 @@ typedef CK_ULONG          CK_KEY_TYPE;
 
 #define CKK_SEED	    0x00000026
 
+#define CKK_SRP             0x00000027
+
 #define CKK_VENDOR_DEFINED  0x80000000
 
 
@@ -586,6 +588,11 @@ typedef CK_ULONG          CK_ATTRIBUTE_TYPE;
 #define CKA_ALLOWED_MECHANISMS          (CKF_ARRAY_ATTRIBUTE|0x00000600)
 
 #define CKA_VENDOR_DEFINED     0x80000000
+
+/* SRP attributes */
+#define CKA_NSS_SRP_SECRET              0x80000001
+#define CKA_NSS_SRP_USER                0x80000002
+#define CKA_NSS_SRP_SALT                0x80000003
 
 
 /* CK_ATTRIBUTE is a structure that includes the type, length
@@ -958,6 +965,10 @@ typedef CK_ULONG          CK_MECHANISM_TYPE;
 
 #define CKM_VENDOR_DEFINED             0x80000000
 
+#define CKM_NSS_SRP_SERVER_KEY_PAIR_GEN 0x80000001
+#define CKM_NSS_SRP_CLIENT_KEY_PAIR_GEN 0x80000002
+#define CKM_NSS_SRP_DERIVE              0x80000003
+
 typedef CK_MECHANISM_TYPE CK_PTR CK_MECHANISM_TYPE_PTR;
 
 
@@ -1158,6 +1169,10 @@ typedef CK_ULONG          CK_RV;
 
 #define CKR_VENDOR_DEFINED                    0x80000000
 
+/* These are new to vX.Y */
+#define CKR_NSS_SRP_UNSUPPORTED_GROUP         0x80000001
+#define CKR_NSS_SRP_ILLEGAL_PARAMETER         0x80000002
+
 
 /* CK_NOTIFY is an application callback that processes events */
 typedef CK_CALLBACK_FUNCTION(CK_RV, CK_NOTIFY)(
@@ -1350,6 +1365,21 @@ typedef struct CK_ECMQV_DERIVE_PARAMS {
 } CK_ECMQV_DERIVE_PARAMS;
 
 typedef CK_ECMQV_DERIVE_PARAMS CK_PTR CK_ECMQV_DERIVE_PARAMS_PTR;
+
+/* CK_SRP_PARAMS provides parameters for SRP key derivation */
+typedef struct CK_SRP_PARAMS {
+  CK_BBOOL      isSender;
+  CK_BYTE_PTR   NData;
+  CK_ULONG      NLen;
+  CK_BYTE_PTR   gData;
+  CK_ULONG      gLen;
+  CK_BYTE_PTR   sData;
+  CK_ULONG      sLen;
+  CK_BYTE_PTR   uData;
+  CK_ULONG      uLen;
+  CK_BYTE_PTR   ppubData;
+  CK_ULONG      ppubLen;
+} CK_SRP_PARAMS;
 
 /* Typedefs and defines for the CKM_X9_42_DH_KEY_PAIR_GEN and the
  * CKM_X9_42_DH_PARAMETER_GEN mechanisms (new for PKCS #11 v2.11) */

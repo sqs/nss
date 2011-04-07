@@ -159,6 +159,9 @@ static int     requestCert;
 static int	verbose;
 static SECItem	bigBuf;
 
+PRFileDesc     *srppfile = NULL;
+PRFileDesc     *srpcfile = NULL;
+
 static PRThread * acceptorThread;
 
 static PRLogModuleInfo *lm;
@@ -176,7 +179,7 @@ Usage(const char *progName)
 "Usage: %s -n rsa_nickname -p port [-3BDENRSTbjlmrsuvx] [-w password]\n"
 "         [-t threads] [-i pid_file] [-c ciphers] [-d dbdir] [-g numblocks]\n"
 "         [-f password_file] [-L [seconds]] [-M maxProcs] [-P dbprefix]\n"
-"         [-a sni_name]\n"
+"         [-a sni_name] [-H srpconffile] [-K srppasswdfile]\n"
 #ifdef NSS_ENABLE_ECC
 "         [-C SSLCacheEntries] [-e ec_nickname]\n"
 #else
@@ -191,7 +194,9 @@ Usage(const char *progName)
 "-E means disable export ciphersuites and SSL step down key gen\n"
 "-R means disable detection of rollback from TLS to SSL3\n"
 "-a configure server for SNI.\n"
-"-k expected name negotiated on server sockets"
+"-k expected name negotiated on server sockets\n"
+"-H srpconffile -- SRP passwd conf file\n"
+"-K srppasswdfile -- SRP passwd file\n"
 "-b means try binding to the port and exit\n"
 "-m means test the model-socket feature of SSL_ImportFD.\n"
 "-r flag is interepreted as follows:\n"
@@ -1937,6 +1942,8 @@ main(int argc, char **argv)
     secuPWData  pwdata = { PW_NONE, 0 };
     int                  virtServerNameIndex = 1;
     char                *expectedHostNameVal = NULL;
+    char *               srppfilename     = NULL;
+    char *               srpcfilename = NULL;
 
     tmp = strrchr(argv[0], '/');
     tmp = tmp ? tmp + 1 : argv[0];
@@ -1949,7 +1956,7 @@ main(int argc, char **argv)
     ** numbers, then capital letters, then lower case, alphabetical. 
     */
     optstate = PL_CreateOptState(argc, argv, 
-        "2:3BC:DEL:M:NP:RSTa:bc:d:e:f:g:hi:jk:lmn:op:qrst:uvw:xyz");
+        "2:3BC:DEH:K:L:M:NP:RSTa:bc:d:e:f:g:hi:jk:lmn:op:qrst:uvw:xyz");
     while ((status = PL_GetNextOpt(optstate)) == PL_OPT_OK) {
 	++optionsFound;
 	switch(optstate->option) {
@@ -1963,7 +1970,8 @@ main(int argc, char **argv)
 
 	case 'D': noDelay = PR_TRUE; break;
 	case 'E': disableStepDown = PR_TRUE; break;
-
+        case 'H': srpcfilename = PORT_Strdup(optstate->value); break;
+        case 'K': srppfilename = PORT_Strdup(optstate->value); break;
         case 'L':
             logStats = PR_TRUE;
 	    if (optstate->value == NULL) {
@@ -2204,6 +2212,7 @@ main(int argc, char **argv)
     rv = NSS_Initialize(dir, certPrefix, certPrefix, SECMOD_DB, NSS_INIT_READONLY);
     if (rv != SECSuccess) {
     	fputs("NSS_Init failed.\n", stderr);
+        fprintf(stderr, "err=%d\n", rv);
 		exit(8);
     }
 
@@ -2304,6 +2313,27 @@ main(int argc, char **argv)
 	            nickName);
 	    exit(11);
 	}
+
+        /* open SRP passwd and conf files */
+        if (srppfilename) {
+            srppfile = PR_Open(srppfilename, PR_RDONLY, 0);
+            if (srppfile == NULL) {
+                fprintf(stderr, "Unable to open SRP passwd file.\n");
+                return 1;
+            }
+        }
+        if (srpcfilename) {
+            srpcfile = PR_Open(srpcfilename, PR_RDONLY, 0);
+            if (srpcfile == NULL) {
+                fprintf(stderr, "Unable to open SRP passwd conf file.\n");
+                return 1;
+            }
+        }
+        if ((srppfile && !srpcfile) || (!srppfile && srpcfile)) {
+            fprintf(stderr, "Must specify both SRP passwd and conf files\n");
+            return 1;
+        }
+
 	if (testbypass) {
 	    PRBool bypassOK;
 	    if (SSL_CanBypass(cert[kt_rsa], privKey[kt_rsa], protos, cipherlist, 

@@ -101,6 +101,7 @@ PK11_GetDefaultArray(int *size)
  *  a given algorithm or mechanism.
  */
 static PK11SlotList 
+    pk11_srpSlotList,
     pk11_seedSlotList,
     pk11_camelliaSlotList,
     pk11_aesSlotList,
@@ -778,6 +779,7 @@ pk11_InitSlotListStatic(PK11SlotList *list)
 SECStatus
 PK11_InitSlotLists(void)
 {
+    pk11_InitSlotListStatic(&pk11_srpSlotList);
     pk11_InitSlotListStatic(&pk11_seedSlotList);
     pk11_InitSlotListStatic(&pk11_camelliaSlotList);
     pk11_InitSlotListStatic(&pk11_aesSlotList);
@@ -804,6 +806,7 @@ PK11_InitSlotLists(void)
 void
 PK11_DestroySlotLists(void)
 {
+    pk11_FreeSlotListStatic(&pk11_srpSlotList);
     pk11_FreeSlotListStatic(&pk11_seedSlotList);
     pk11_FreeSlotListStatic(&pk11_camelliaSlotList);
     pk11_FreeSlotListStatic(&pk11_aesSlotList);
@@ -837,6 +840,10 @@ PK11_GetSlotList(CK_MECHANISM_TYPE type)
         return NULL;
 #endif
     switch (type) {
+    case CKM_NSS_SRP_DERIVE:
+    case CKM_NSS_SRP_SERVER_KEY_PAIR_GEN:
+    case CKM_NSS_SRP_CLIENT_KEY_PAIR_GEN:
+	return &pk11_srpSlotList;
     case CKM_SEED_CBC:
     case CKM_SEED_ECB:
 	return &pk11_seedSlotList;

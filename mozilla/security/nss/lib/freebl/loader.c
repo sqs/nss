@@ -1755,3 +1755,35 @@ JPAKE_Final(PLArenaPool * arena, const SECItem * p, const SECItem  *q,
         return SECFailure;
     return (vector->p_JPAKE_Final)(arena, p, q, x2, gx4, x2s, B, K);
 }
+
+SECStatus
+SRP_ServerDerive(SRPPrivateKey *prvKey, SRPDeriveParams *param, SECItem *pms)
+{
+    if (!vector && PR_SUCCESS != freebl_RunLoaderOnce())
+        return SECFailure;
+    return (vector->p_SRP_ServerDerive)(prvKey, param, pms);
+}
+
+SECStatus
+SRP_ClientDerive(SRPPrivateKey *prvKey, SRPDeriveParams *param, SECItem *pms)
+{
+    if (!vector && PR_SUCCESS != freebl_RunLoaderOnce())
+        return SECFailure;
+    return (vector->p_SRP_ClientDerive)(prvKey, param, pms);
+}
+
+SECStatus
+SRP_NewServerKeyPair(SRPPrivateKey **prvKey, SRPKeyPairParams *param)
+{
+    if (!vector && PR_SUCCESS != freebl_RunLoaderOnce())
+        return SECFailure;
+    return (vector->p_SRP_NewServerKeyPair)(prvKey, param);
+}
+
+SECStatus
+SRP_NewClientKeyPair(SRPPrivateKey **prvKey, SRPKeyPairParams *param)
+{
+    if (!vector && PR_SUCCESS != freebl_RunLoaderOnce())
+        return SECFailure;
+    return (vector->p_SRP_NewClientKeyPair)(prvKey, param);
+}

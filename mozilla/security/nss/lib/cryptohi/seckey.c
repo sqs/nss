@@ -252,6 +252,39 @@ SECKEY_CreateDHPrivateKey(SECKEYDHParams *param, SECKEYPublicKey **pubk, void *c
     return(privk);
 }
 
+/* Generates a SRP private key. For the client, this is basically a DH key pair
+** with different key size.  The server private key is more involved.
+**
+** If the private key is exposed, long-term secrets in the token might get
+** compromised.
+**/
+SECKEYPrivateKey *
+SECKEY_CreateSRPPrivateKey(SECKEYSRPParams *param, SECKEYPublicKey **pubk, PRBool isServer, void *cx)
+{
+    SECKEYPrivateKey *privk;
+    CK_MECHANISM_TYPE type;
+
+    if (isServer) {
+        type = CKM_NSS_SRP_SERVER_KEY_PAIR_GEN;
+    } else {
+        type = CKM_NSS_SRP_CLIENT_KEY_PAIR_GEN;
+    }
+
+    PK11SlotInfo *slot = PK11_GetBestSlot(type,cx);
+    if (!slot) {
+	    return NULL;
+    }
+
+    privk = PK11_GenerateKeyPair(slot, type, param, 
+                                 pubk, PR_FALSE, PR_TRUE, cx);
+    if (!privk) 
+    privk = PK11_GenerateKeyPair(slot, type, param, 
+	                             pubk, PR_FALSE, PR_FALSE, cx);
+
+    PK11_FreeSlot(slot);
+    return(privk);
+}
+
 /* Create an EC key pair in any slot able to do so, 
 ** This is a "session" (temporary), not "token" (permanent) key. 
 ** Because of the high probability that this key will need to be moved to

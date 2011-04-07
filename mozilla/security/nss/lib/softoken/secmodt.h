@@ -184,6 +184,7 @@ struct PK11DefaultArrayEntryStr {
 #define SECMOD_SHA512_FLAG	0x00008000L	/* also for SHA384 */
 #define SECMOD_CAMELLIA_FLAG 	0x00010000L /* = PUBLIC_MECH_CAMELLIA_FLAG */
 #define SECMOD_SEED_FLAG	0x00020000L
+#define SECMOD_SRP_FLAG         0x00040000L
 /* reserved bit for future, do not use */
 #define SECMOD_RESERVED_FLAG    0X08000000L
 #define SECMOD_FRIENDLY_FLAG	0x10000000L

@@ -128,6 +128,8 @@ int renegotiationsDone = 0;
 static char *progName;
 
 secuPWData  pwdata          = { PW_NONE, 0 };
+char *userlogin  = NULL; /* TODO(sqs): unify with pwdata? */
+char *userpasswd = NULL;
 
 void printSecurityInfo(PRFileDesc *fd)
 {
@@ -179,6 +181,18 @@ void printSecurityInfo(PRFileDesc *fd)
 	ssl3stats->hsh_sid_cache_not_ok, ssl3stats->hsh_sid_stateless_resumes);
 }
 
+/* Called by SSL to get a password for the TLS-SRP login interactively */
+SECStatus
+userPasswdCallback(PRFileDesc *fd, SECItem * passwd, void *arg)
+{
+    /* AllocItem exits if item has memory allocated already */
+    SECITEM_AllocItem(NULL, passwd, PORT_Strlen(userpasswd));
+    if (!passwd->data) return SECFailure;
+    PORT_Memcpy(passwd->data, userpasswd, passwd->len);
+
+    return SECSuccess;
+}
+
 void
 handshakeCallback(PRFileDesc *fd, void *client_data)
 {
@@ -210,6 +224,8 @@ static void Usage(const char *progName)
 	    "-d certdir");
     fprintf(stderr, "%-20s Nickname of key and cert for client auth\n", 
                     "-n nickname");
+    fprintf(stderr, "%-20s Use password for SSL login.\n", "-k password");
+    fprintf(stderr, "%-20s Use username for SSL login.\n", "-l username");
     fprintf(stderr, 
             "%-20s Bypass PKCS11 layer for SSL encryption and MACing.\n", "-B");
     fprintf(stderr, "%-20s Disable SSL v2.\n", "-2");
@@ -526,6 +542,7 @@ int main(int argc, char **argv)
     PRSocketOptionData opt;
     PRNetAddr          addr;
     PRPollDesc         pollset[2];
+    PRBool             useCommandLineLogin = PR_FALSE;
     PRBool             pingServerFirst = PR_FALSE;
     PRBool             clientSpeaksFirst = PR_FALSE;
     PRBool             wrStarted = PR_FALSE;
@@ -553,7 +570,7 @@ int main(int argc, char **argv)
     }
 
     optstate = PL_CreateOptState(argc, argv,
-                                 "23BSTW:a:c:d:fgh:m:n:op:qr:suvw:xz");
+                                 "23BSTW:a:c:d:fgh:m:n:op:qr:suvw:xzl:k:");
     while ((optstatus = PL_GetNextOpt(optstate)) == PL_OPT_OK) {
 	switch (optstate->option) {
 	  case '?':
@@ -593,6 +610,16 @@ int main(int argc, char **argv)
 	    if (multiplier < 0)
 	    	multiplier = 0;
 	    break;
+
+          case 'l':
+            userlogin = strdup(optstate->value);
+            useCommandLineLogin = PR_TRUE;
+            break;
+
+          case 'k':
+            userpasswd = strdup(optstate->value);
+            useCommandLineLogin = PR_TRUE;
+            break;
 
 	  case 'n': nickname = PORT_Strdup(optstate->value);	break;
 
@@ -887,6 +914,16 @@ int main(int argc, char **argv)
         SSL_SetURL(s, hs1SniHostName);
     } else {
         SSL_SetURL(s, host);
+    }
+
+    /* tstclient provides login via cmd line, not interactive */
+    if (useCommandLineLogin) {
+        if (userlogin && userpasswd) {
+            SSL_UserPasswdHook(s, userPasswdCallback, NULL);
+            SSL_SetUserLogin(s, userlogin, userpasswd);
+        } else {
+            fprintf(stderr, "Login *and* password must be specified.\n");
+        }
     }
 
     /* Try to connect to the server */

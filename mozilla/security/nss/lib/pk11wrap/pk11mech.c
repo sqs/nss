@@ -395,6 +395,10 @@ PK11_GetKeyType(CK_MECHANISM_TYPE type,unsigned long len)
     case CKM_EC_KEY_PAIR_GEN: /* aka CKM_ECDSA_KEY_PAIR_GEN */
     case CKM_ECDH1_DERIVE:
 	return CKK_EC;  /* CKK_ECDSA is deprecated */
+    case CKM_NSS_SRP_DERIVE:
+    case CKM_NSS_SRP_SERVER_KEY_PAIR_GEN:
+    case CKM_NSS_SRP_CLIENT_KEY_PAIR_GEN:
+    return CKK_SRP;
     case CKM_SSL3_PRE_MASTER_KEY_GEN:
     case CKM_GENERIC_SECRET_KEY_GEN:
     case CKM_SSL3_MASTER_KEY_DERIVE:

@@ -271,6 +271,13 @@ static const struct FREEBLVectorStr vector =
     JPAKE_Final,
 
     /* End of Version 3.012. */
+
+    SRP_ServerDerive,
+    SRP_ClientDerive,
+    SRP_NewServerKeyPair,
+    SRP_NewClientKeyPair,
+
+    /* End of Version x.y. */
 };
 
 const FREEBLVector * 

@@ -3680,6 +3680,10 @@ CK_RV NSC_GenerateKeyPair (CK_SESSION_HANDLE hSession,
     ECParams *          ecParams;
 #endif /* NSS_ENABLE_ECC */
 
+    /* SRP */
+    SRPPrivateKey   *srpPriv;
+    SRPKeyPairParams srpParams;
+
     CHECK_FORK();
 
     if (!slot) {
@@ -4069,6 +4073,66 @@ ecgn_done:
 	PORT_FreeArena(ecPriv->ecParams.arena, PR_TRUE);
 	break;
 #endif /* NSS_ENABLE_ECC */
+
+    case CKM_NSS_SRP_SERVER_KEY_PAIR_GEN:
+    case CKM_NSS_SRP_CLIENT_KEY_PAIR_GEN:
+
+	sftk_DeleteAttributeType(privateKey, CKA_NSS_SRP_SECRET);
+    sftk_DeleteAttributeType(privateKey, CKA_VALUE);
+    sftk_DeleteAttributeType(privateKey, CKA_NETSCAPE_DB);
+	key_type = CKK_SRP;
+    
+    /* if no secret was provided for softtoken, die */
+    crv = sftk_ConstrainAttribute(publicKey, CKA_NSS_SRP_SECRET, 1, 0, 0);
+	if (crv != CKR_OK) break;
+
+    crv = sftk_Attribute2SSecItem(NULL, &srpParams.secret, publicKey, CKA_NSS_SRP_SECRET);
+	if (crv != CKR_OK) break;
+    crv = sftk_Attribute2SSecItem(NULL, &srpParams.g, publicKey, CKA_BASE);
+	if (crv != CKR_OK) break;
+    crv = sftk_Attribute2SSecItem(NULL, &srpParams.N, publicKey, CKA_MODULUS);
+	if (crv != CKR_OK) break;
+
+    if (pMechanism->mechanism == CKM_NSS_SRP_SERVER_KEY_PAIR_GEN) {
+        rv = SRP_NewServerKeyPair(&srpPriv, &srpParams);
+    } else {
+        rv = SRP_NewClientKeyPair(&srpPriv, &srpParams);
+    }
+
+	if (rv != SECSuccess) { 
+	    crv = CKR_DEVICE_ERROR;
+        /* these two failures must be propagated to trigger SSL_SendAlert() */
+        if (PORT_GetError() == SEC_ERROR_SRP_UNSUPPORTED_GROUP)
+            crv = CKR_NSS_SRP_UNSUPPORTED_GROUP;
+        if (PORT_GetError() == SEC_ERROR_SRP_ILLEGAL_PARAMETER)
+            crv = CKR_NSS_SRP_ILLEGAL_PARAMETER;
+	    break;
+	}
+
+    /* If this were a real token and srpParams were empty, the token must *
+     * know and return the needed srpParams or fail. In case of a soft    *
+     * token however, the token knows nothing. Thus we return the key pair*
+     * and secret at this point or fail if srpParams values are missing.  */
+
+	crv = sftk_AddAttributeType(privateKey, CKA_NSS_SRP_SECRET, 
+		                    sftk_item_expand(&srpParams.secret));
+	if (crv != CKR_OK) goto srpgn_done;
+	crv = sftk_AddAttributeType(privateKey, CKA_VALUE, 
+			                sftk_item_expand(&srpPriv->prvKey));
+	if (crv != CKR_OK) goto srpgn_done;
+    crv = sftk_AddAttributeType(privateKey, CKA_NETSCAPE_DB,
+			                sftk_item_expand(&srpPriv->pubKey));
+	if (crv != CKR_OK) goto srpgn_done;
+	crv = sftk_AddAttributeType(publicKey, CKA_VALUE, 
+				            sftk_item_expand(&srpPriv->pubKey));
+	if (crv != CKR_OK) goto srpgn_done;
+
+srpgn_done:
+	PORT_FreeArena(srpPriv->arena, PR_TRUE); /* not zeroized!! */
+    SECITEM_FreeItem(&srpParams.secret, PR_FALSE);
+    SECITEM_FreeItem(&srpParams.g, PR_FALSE);
+    SECITEM_FreeItem(&srpParams.N, PR_FALSE);
+	break;
 
     default:
 	crv = CKR_MECHANISM_INVALID;
@@ -6199,6 +6263,54 @@ jpakeFinal:
             crv = jpake_Final(hashType,
                         (CK_NSS_JPAKEFinalParams *) pMechanism->pParameter,
                         sourceKey, key);
+        break;
+
+    case CKM_NSS_SRP_DERIVE:
+        {
+    	CK_SRP_PARAMS       *mechParams;
+        NSSLOWKEYPrivateKey *privKey;
+        SRPDeriveParams     params;
+        SECItem             pms = {0, NULL, 0};
+        SECStatus           rv;
+
+	    /* get mechanism parameters */
+	    mechParams = (CK_SRP_PARAMS *) pMechanism->pParameter;
+	    if (pMechanism->ulParameterLen != sizeof(CK_SRP_PARAMS)) {
+	        crv = CKR_MECHANISM_PARAM_INVALID;
+	        break;
+	    }
+
+        /* get our private key */
+	    privKey = sftk_GetPrivKey(sourceKey, CKK_SRP, &crv);
+	    if (privKey == NULL) {
+	        break;
+	    }
+
+        params.N.data = mechParams->NData;
+        params.N.len  = mechParams->NLen;
+        params.g.data = mechParams->gData;
+        params.g.len  = mechParams->gLen;
+        params.s.data = mechParams->sData;
+        params.s.len  = mechParams->sLen;
+        params.u.data = mechParams->uData;
+        params.u.len  = mechParams->uLen;
+        params.ppub.data = mechParams->ppubData;
+        params.ppub.len  = mechParams->ppubLen;
+
+        /* derive secret, pms has length of modulus */
+        if (mechParams->isSender) {
+	        rv = SRP_ServerDerive(&privKey->u.srp, &params, &pms);
+        } else {
+	        rv = SRP_ClientDerive(&privKey->u.srp, &params, &pms);
+        }
+        if (rv != SECSuccess) {
+            nsslowkey_DestroyPrivateKey(privKey);
+	        crv = CKR_DEVICE_ERROR;
+        }
+        sftk_forceAttribute(key, CKA_VALUE, pms.data, pms.len);
+	    PORT_ZFree(pms.data, pms.len);
+
+        }
         break;
 
     default:

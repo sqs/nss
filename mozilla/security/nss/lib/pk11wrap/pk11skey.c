@@ -1762,8 +1762,73 @@ PK11_PubDerive(SECKEYPrivateKey *privKey, SECKEYPublicKey *pubKey,
 	    if (crv == CKR_OK) return symKey;
 	    PORT_SetError( PK11_MapError(crv) );
 	}
+    break;
+    case srpKey:
+        {
+        PK11SlotInfo     *slot           = privKey->pkcs11Slot;
+        CK_MECHANISM     mechanism;
+        CK_RV            crv;
+        CK_ATTRIBUTE     keyTemplate[4];
+        CK_OBJECT_CLASS  keyClass        = CKO_SECRET_KEY;
+        CK_KEY_TYPE      keyType         = CKK_GENERIC_SECRET;
+	    CK_BBOOL         cktrue          = CK_TRUE;
+        CK_ATTRIBUTE     *attrs          = keyTemplate;
+        CK_SRP_PARAMS    *mechParams     = NULL;
+	    CK_ULONG         key_size        = 0;
+        int              templateCount;
+
+
+        if (pubKey->keyType != srpKey) {
+	    PORT_SetError(SEC_ERROR_BAD_KEY);
+	    return NULL;
    }
 
+        PK11_SETATTRS(attrs, CKA_CLASS, &keyClass, sizeof(keyClass));     attrs++;
+        PK11_SETATTRS(attrs, CKA_KEY_TYPE, &keyType, sizeof(keyType));    attrs++;
+        PK11_SETATTRS(attrs, operation, &cktrue, 1);                      attrs++;
+        PK11_SETATTRS(attrs, CKA_VALUE_LEN, &key_size, sizeof(key_size)); attrs++;
+        templateCount =  attrs - keyTemplate;
+        PR_ASSERT(templateCount <= sizeof(keyTemplate)/sizeof(CK_ATTRIBUTE));
+
+        /* XXX why is this done after keyType is used? */
+        keyType = PK11_GetKeyType(target,keySize);
+        key_size = keySize;
+        symKey->size = keySize;
+        if (key_size == 0) 
+        	templateCount--;
+
+        mechParams = PORT_ZNew(CK_SRP_PARAMS);
+        if (!mechParams) {
+	    PK11_FreeSymKey(symKey);
+	    return NULL;
+        }
+
+        mechParams->NData = pubKey->u.srp.N.data;
+        mechParams->NLen  = pubKey->u.srp.N.len;
+        mechParams->gData = pubKey->u.srp.g.data;
+        mechParams->gLen  = pubKey->u.srp.g.len;
+        mechParams->sData = pubKey->u.srp.s.data;
+        mechParams->sLen  = pubKey->u.srp.s.len;
+        mechParams->uData = pubKey->u.srp.u.data;
+        mechParams->uLen  = pubKey->u.srp.u.len;
+        mechParams->ppubData = pubKey->u.srp.ppub.data;
+        mechParams->ppubLen  = pubKey->u.srp.ppub.len;
+        mechParams->isSender = isSender;
+
+        mechanism.mechanism      = derive;
+        mechanism.pParameter     = mechParams;
+        mechanism.ulParameterLen = sizeof(CK_SRP_PARAMS);
+
+        pk11_EnterKeyMonitor(symKey);
+        crv = PK11_GETTAB(slot)->C_DeriveKey(symKey->session, &mechanism, 
+        	privKey->pkcs11ID, keyTemplate, templateCount, &symKey->objectID);
+        pk11_ExitKeyMonitor(symKey);
+
+	    if (crv == CKR_OK) return symKey;
+	    PORT_SetError( PK11_MapError(crv) );
+        }
+    break;
+    }
    PK11_FreeSymKey(symKey);
    return NULL;
 }

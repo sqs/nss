@@ -954,6 +954,7 @@ VFY_VerifyDataDirect;
 VFY_VerifyDataWithAlgorithmID;
 VFY_VerifyDigestDirect;
 VFY_VerifyDigestWithAlgorithmID;
+SECKEY_CreateSRPPrivateKey;
 ;+    local:
 ;+       *;
 ;+};

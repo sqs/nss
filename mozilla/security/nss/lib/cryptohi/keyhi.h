@@ -122,6 +122,12 @@ SECKEYPrivateKey *SECKEY_CreateDHPrivateKey(SECKEYDHParams *param,
 					   SECKEYPublicKey **pubk, void *cx);
 
 /*
+ * create a new SRP key pair. The private Key is returned...
+ */
+SECKEYPrivateKey *SECKEY_CreateSRPPrivateKey(SECKEYSRPParams *param,
+                       SECKEYPublicKey **pubk, PRBool isServer, void *cx);
+
+/*
  * create a new EC key pair. The private Key is returned...
  */
 SECKEYPrivateKey *SECKEY_CreateECPrivateKey(SECKEYECParams *param,

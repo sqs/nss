@@ -1191,3 +1191,60 @@ loser:
 }
 
 #endif /* NSS_ENABLE_ECC */
+
+/* send user mapping indication using info from ss->sec.userlogin
+ * called from ssl3_CallHelloExtensionSenders */
+PRInt32
+ssl3_SendSRPHelloExtension(sslSocket * ss, PRBool append,
+                                         PRUint32 maxBytes)
+{
+    SECItem     * user = ss->sec.userName;
+ 
+    if (user == NULL)
+        return 0; /* no credentials, no extension */
+
+    if (append && maxBytes >= user->len + 5) {
+        SECStatus rv;
+	/* extension_type 6 */
+        rv = ssl3_AppendHandshakeNumber(ss, 12, 2);
+	if (rv != SECSuccess) return 0;
+	/* length of extension */
+	rv = ssl3_AppendHandshakeNumber(ss, user->len + 1, 2);
+        if (rv != SECSuccess) return 0;
+	/* length of data */
+	rv = ssl3_AppendHandshakeNumber(ss, user->len, 1);
+        if (rv != SECSuccess) return 0;
+	/* extension_data = srp user name */
+	rv = ssl3_AppendHandshake(ss, user->data, user->len);
+	if (rv != SECSuccess) return 0;
+    }
+    return user->len+5;
+}
+
+SECStatus
+ssl3_HandleSRPHelloExtension(sslSocket *ss, PRUint16 ext, SECItem *data)
+{
+    SECStatus       rv;
+    SECItem         username;
+    
+	rv = ssl3_ConsumeHandshakeVariable(ss, &username, 1, &data->data, &data->len);
+    if (rv != SECSuccess)
+        return rv;
+
+    /* enforce SRP username length constrain */
+    if (data->len > MAX_SRP_USERNAME_LENGTH)
+        data->len = MAX_SRP_USERNAME_LENGTH;
+    
+    ss->sec.userName = PORT_ZAlloc(sizeof(SECItem));
+    if (!ss->sec.userName)
+        goto no_memory;
+
+    rv = SECITEM_CopyItem(NULL, ss->sec.userName, &username);
+    if (rv != SECSuccess)
+        goto no_memory;
+
+	return rv;
+no_memory:
+    ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);
+    return SECFailure;
+}

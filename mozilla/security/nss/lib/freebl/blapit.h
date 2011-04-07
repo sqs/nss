@@ -299,6 +299,35 @@ struct DHPrivateKeyStr {
 };
 typedef struct DHPrivateKeyStr DHPrivateKey;
 
+/************************************************
+** SRP Private key structure
+*/
+typedef struct SRPPrivateKeyStr {
+    PLArenaPool *arena;
+    SECItem pubKey; /* our pubKey A or B */
+    SECItem prvKey; /* our prvKey a or b */
+    SECItem secret; /* v or P depending on isServer */
+} SRPPrivateKey;
+
+/* only needed for sftk_GetPublicKey */
+typedef struct SRPPublicKeyStr {
+    SECItem pubKey;
+} SRPPublicKey;
+
+typedef struct SRPDeriveParamsStr {
+    SECItem N;      /* modulus   */
+    SECItem g;      /* generator */
+    SECItem s;      /* salt      */
+    SECItem u;      /* username  */
+    SECItem ppub;   /* peers pubkey A or B */
+} SRPDeriveParams;
+
+typedef struct SRPKeyPairParamsStr {
+    SECItem N;
+    SECItem g;
+    SECItem secret; /* v or P depending on isServer */
+} SRPKeyPairParams;
+
 /***************************************************************************
 ** Data structures used for elliptic curve parameters and
 ** public and private keys.

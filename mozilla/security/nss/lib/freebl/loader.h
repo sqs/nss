@@ -571,6 +571,19 @@ struct FREEBLVectorStr {
  
    /* Version 3.012 came to here */
 
+ SECStatus (* p_SRP_ServerDerive)(SRPPrivateKey *prv, SRPDeriveParams *param,
+                                  SECItem *pms);
+
+ SECStatus (* p_SRP_ClientDerive)(SRPPrivateKey *prv, SRPDeriveParams *param,
+                                  SECItem *pms);
+
+ SECStatus (* p_SRP_NewServerKeyPair)(SRPPrivateKey **prvKey,
+                                      SRPKeyPairParams *param);
+
+ SECStatus (* p_SRP_NewClientKeyPair)(SRPPrivateKey **prvKey,
+                                      SRPKeyPairParams *param);
+
+   /* Version x.y came to here */
 };
 
 typedef struct FREEBLVectorStr FREEBLVector;

@@ -97,6 +97,7 @@ PRIVATE_EXPORTS = \
 	ec.h \
 	ecl.h \
 	ecl-curve.h \
+        srp_groups.h \
 	$(NULL)
 
 MPI_HDRS = mpi-config.h mpi.h mpi-priv.h mplogic.h mpprime.h logtab.h mp_gf2m.h
@@ -147,6 +148,7 @@ CSRCS = \
 	tlsprfalg.c \
 	seed.c \
 	jpake.c \
+        srp.c \
 	$(MPI_SRCS) \
 	$(MPCPU_SRCS) \
 	$(ECL_SRCS) \
@@ -170,6 +172,7 @@ ALL_HDRS =  \
 	shsign.h \
 	vis_proto.h \
 	seed.h \
+        srp_groups.h \
 	$(NULL)
 
 

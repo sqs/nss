@@ -65,7 +65,8 @@ typedef enum {
     keaKey = 5,
     ecKey = 6,
     rsaPssKey = 7,
-    rsaOaepKey = 8
+    rsaOaepKey = 8,
+    srpKey = 9
 } KeyType;
 
 /*
@@ -202,6 +203,28 @@ struct SECKEYKEAPublicKeyStr {
 typedef struct SECKEYKEAPublicKeyStr SECKEYKEAPublicKey;
 
 /*
+ * SRP Key structures
+ */
+
+typedef struct SECKEYSRPPublicKeyStr {
+    int group;      /* group size    */
+    SECItem N;      /* modulus       */
+    SECItem g;      /* generator     */
+    SECItem s;      /* salt          */
+    SECItem u;      /* user name     */
+    SECItem pub;    /* our pubkey    */
+    SECItem ppub;   /* peers pubkey  */
+} SECKEYSRPPublicKey;
+
+typedef struct SECKEYSRPParamsStr {
+    SECItem N;      /* user name     */
+    SECItem g;      /* generator     */
+    SECItem s;      /* salt          */
+    SECItem u;      /* user name     */
+    SECItem secret; /* secret P or v */
+} SECKEYSRPParams;
+
+/*
 ** A Generic  public key object.
 */
 struct SECKEYPublicKeyStr {
@@ -216,6 +239,7 @@ struct SECKEYPublicKeyStr {
         SECKEYKEAPublicKey kea;
         SECKEYFortezzaPublicKey fortezza;
 	SECKEYECPublicKey  ec;
+	SECKEYSRPPublicKey srp;
     } u;
 };
 typedef struct SECKEYPublicKeyStr SECKEYPublicKey;

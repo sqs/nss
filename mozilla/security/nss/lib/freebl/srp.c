@@ -60,6 +60,8 @@
 /* length of srp secret keys in byte */
 #define SRP_SECRET_KEY_LEN 32
 
+#define PRINT_MPINT(msg,n) {char *s=PORT_ZAlloc(mp_radix_size(&n,16));mp_toradix(&n,s,16);printf("*** %s = %s\n", msg, s);}
+
 
 /* check if (N,g) are among the known-good group params */
 static SECStatus check_srp_group(const mp_int *N, const mp_int *g) {
@@ -193,8 +195,18 @@ SECStatus SRP_ServerDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     CHECK_MPI_OK(mp_mulmod(&mp_A, &mp_res, &mp_N, &mp_res));
     CHECK_MPI_OK(mp_exptmod(&mp_res, &mp_b, &mp_N, &mp_pms));
 
+    PRINT_MPINT("u", mp_u);
+    PRINT_MPINT("k", mp_k);
+    PRINT_MPINT("N", mp_N);
+    PRINT_MPINT("g", mp_g);
+    PRINT_MPINT("A", mp_A);
+    PRINT_MPINT("v", mp_v);
+    PRINT_MPINT("b", mp_b);
+
     MPINT_TO_SECITEM(&mp_pms, pms, NULL);
-    
+
+    PRINT_MPINT("ServerDerive pms", mp_pms);
+
     rv = SECSuccess;
 cleanup:
     PORT_Free(zero);
@@ -268,6 +280,7 @@ SECStatus SRP_ClientDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     SECITEM_TO_MPINT(srp->N,   &mp_N);
     SECITEM_TO_MPINT(srp->g,   &mp_g);
     SECITEM_TO_MPINT(srp->ppub,&mp_B);
+    SECITEM_TO_MPINT(prvKey->pubKey, &mp_A);
 
     CHECK_SEC_OK(srp_backdoor_check(&mp_N, &mp_B));
 
@@ -328,7 +341,19 @@ SECStatus SRP_ClientDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     CHECK_MPI_OK(mp_add(&mp_res1,&mp_a,&mp_res1));
     CHECK_MPI_OK(mp_exptmod(&mp_res2,&mp_res1,&mp_N,&mp_pms));
 
+    PRINT_MPINT("u", mp_u);
+    PRINT_MPINT("k", mp_k);
+    PRINT_MPINT("N", mp_N);
+    PRINT_MPINT("g", mp_g);
+    PRINT_MPINT("x", mp_x);
+    PRINT_MPINT("a", mp_a);
+    PRINT_MPINT("A", mp_A);
+    PRINT_MPINT("B", mp_B);
+    
     MPINT_TO_SECITEM(&mp_pms, pms, NULL);
+
+    PRINT_MPINT("ClientDerive pms", mp_pms);
+    
     rv = SECSuccess;
 cleanup:
     PORT_Free(zero);
@@ -425,10 +450,18 @@ SECStatus SRP_NewServerKeyPair(SRPPrivateKey **prvKey, SRPKeyPairParams *srp) {
     CHECK_MPI_OK( mp_init(&mp_pub));
     CHECK_MPI_OK( mp_init(&mp_prv));
     CHECK_MPI_OK( mp_init(&mp_res));
+    if (!srp->N.data || !srp->g.data || !srp->secret.data) {
+      printf("srp params missing 1+ entries\n");
+      goto cleanup;
+    }
     SECITEM_TO_MPINT(*it_k,       &mp_k);
     SECITEM_TO_MPINT(srp->N,      &mp_N);
     SECITEM_TO_MPINT(srp->g,      &mp_g);
     SECITEM_TO_MPINT(srp->secret, &mp_v);
+    if (!key->prvKey.data) {
+      printf("prvKey null\n");
+      goto cleanup;
+    }
     SECITEM_TO_MPINT(key->prvKey, &mp_prv);
     
     char *N_str;

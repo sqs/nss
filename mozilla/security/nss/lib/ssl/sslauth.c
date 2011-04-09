@@ -253,7 +253,7 @@ SSL_UserPasswdHook(PRFileDesc *s, SSLUserPasswdCB func, void *arg)
 
 /* used by client to provide user credentials non-interactively */
 SECStatus
-SSL_SetUserLogin(PRFileDesc *s, char *user, char *passwd)
+SSL_SetUserLogin(PRFileDesc *s, const char *user, const char *passwd)
 {
     sslSocket *ss = NULL;
     int len;

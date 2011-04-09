@@ -151,6 +151,9 @@ const int ssl3CipherSuites[] = {
     0
 };
 
+/* SRP Group parameter whitelist */
+#define buflen 2048
+
 /* data and structures for shutdown */
 static int	stopping;
 
@@ -159,8 +162,16 @@ static int     requestCert;
 static int	verbose;
 static SECItem	bigBuf;
 
-PRFileDesc     *srppfile = NULL;
-PRFileDesc     *srpcfile = NULL;
+PRFileDesc     *srpvFile = NULL;
+PRFileDesc     *srpConfFile = NULL;
+
+typedef struct SRPConfigGroupParamsStr {
+    int count;
+    SECItem *N;
+    SECItem *g;
+} SRPConfigGroupParams;
+
+static SRPConfigGroupParams srpConfGroupParams;
 
 static PRThread * acceptorThread;
 
@@ -1611,6 +1622,238 @@ void initLoggingLayer(void)
     loggingMethods.send   = logSend;
 }
 
+/* the following conversion routine has been inspired by code from Stanford and have been taken from OpenSSL. SRP uses a non-standard base64 encoding for group config files */ 
+
+static char srp_b64table[] =
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz./";
+
+/*
+ * Convert a base64 string into raw byte array representation.
+ */
+static int srp_fromb64(char * a, const char * src)
+{
+    char *loc;
+    int i, j;
+    int size;
+
+    while(*src && (*src == ' ' || *src == '\t' || *src == '\n'))
+        ++src;
+    size = PL_strlen(src);
+    i = 0;
+    while(i < size)
+    {
+        loc = PL_strchr(srp_b64table, src[i]);
+        if(loc == (char *) 0) break;
+        else a[i] = loc - srp_b64table;
+        ++i;
+    }
+    size = i;
+    i = size - 1;
+    j = size;
+    while(1)
+    {
+        a[j] = a[i];
+        if(--i < 0) break;
+        a[j] |= (a[i] & 3) << 6;
+        --j;
+        a[j] = (unsigned char) ((a[i] & 0x3c) >> 2);
+        if(--i < 0) break;
+        a[j] |= (a[i] & 0xf) << 4;
+        --j;
+        a[j] = (unsigned char) ((a[i] & 0x30) >> 4);
+        if(--i < 0) break;
+        a[j] |= (a[i] << 2);
+
+        a[--j] = 0;
+        if(--i < 0) break;
+    }
+    while(a[j] == 0 && j <= size) ++j;
+    i = 0;
+    while (j <= size) a[i++] = a[j++];
+    return i;
+}
+
+/* Parse SRP group params configuration file. Format is:
+     <group index> ":" <base64-encoded SRP N> ":" <SRP g>
+   One group per line.
+ */
+static void
+parseSRPConf(PRFileDesc *f, SRPConfigGroupParams *srpConf)
+{
+    /* TODO(sqs): make buflen not a #define'd constant */
+    char buf[buflen]; /* big enough for at least one line */
+    int param_index;
+    int config_index; /* param_index starts at 1, config_index starts at 0 */
+    char * N = NULL;
+    int g;
+    char * tmp = NULL;
+    void * ok;
+    unsigned int i, rv, bytes, N_bytes;
+
+    if (srpConf->count != 0)
+        errExit("already parsed SRP group params config file (count != 0)");
+
+    PR_Seek(f, 0, SEEK_SET);
+    
+    PR_Seek(f, 0, SEEK_SET);
+
+    while ((bytes = PR_Read(f, buf, buflen - 1))) {
+        buf[bytes] = '\0';
+
+        /* printf("buf = <<<%s>>>\n", buf); */
+
+        tmp = buf;
+        i = 0;
+
+        while (tmp[i] != ':') i++;
+        tmp[i] = '\0';
+        param_index = PORT_Atoi(tmp);
+
+        if (param_index != srpConf->count + 1)
+            errExit("encountered out-of-order SRP group");
+
+        tmp += i + 1;
+        i = 0;
+        while (tmp[i] != ':') i++;
+        tmp[i] = '\0';
+        N = PL_strdup(tmp);
+
+        tmp += i + 1;
+        i = 0;
+        while (tmp[i] != ':') i++;
+        tmp[i] = '\0';
+        g = PORT_Atoi(tmp);
+
+        PR_Seek(f, (tmp - buf + i - 1) - bytes, SEEK_CUR);
+
+        /* add to struct */
+        srpConf->count++;
+        srpConf->N = PR_Realloc(srpConf->N, srpConf->count * sizeof(SECItem));
+        srpConf->g = PR_Realloc(srpConf->g, srpConf->count * sizeof(SECItem));
+        if (srpConf->N == NULL || srpConf->g == NULL)
+            errExit("couldn't realloc for N or g in SRP params");
+        
+        config_index = param_index - 1;
+        srpConf->N[config_index].data = NULL;
+        srpConf->g[config_index].data = NULL;
+        N_bytes = PL_strlen(N); /* upper bound on b64->b256 conv */
+        ok = SECITEM_AllocItem(NULL, &srpConf->N[config_index], N_bytes);
+        if (ok == NULL)
+            errExit("error in SECITEM_AllocItem for SRP N");
+        ok = SECITEM_AllocItem(NULL, &srpConf->g[config_index], 1);
+        if (ok == NULL)
+            errExit("error in SECITEM_AllocItem for SRP g");
+        
+        rv = srp_fromb64((char *)srpConf->N[config_index].data, N);
+        srpConf->N[config_index].len = rv;
+        srpConf->g[config_index].data[0] = g;
+    }
+}
+
+/* 
+ * Callback function that supplies SSL with SRP parameters for specified user.
+ * It fills *srp with info extracted from srpvfile
+ *
+ * XXX This function is the ~same as getUserData() in srputil..
+ */
+
+SECStatus
+getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
+{
+    char * verifier = NULL;
+    char * salt     = NULL;
+    char * tmp      = NULL;
+    char * pos      = NULL;
+    char buffer[buflen]; /* buflen is big enough for at least one line */
+    unsigned int i, bytes;
+    unsigned int ulen;
+    unsigned int group_index, group_size, config_index;
+    SECStatus rv;
+    unsigned int b64bytes;
+    int found = 0;
+
+    PRFileDesc * srpvFile = (PRFileDesc*)arg;
+    
+    ulen = srp->u.len;
+
+    PR_Seek(srpvFile,0,SEEK_SET);
+
+    while ( (bytes = PR_Read(srpvFile, buffer, buflen-1)) ) {
+        buffer[bytes] = '\0';
+        printf("buf = <<<%s>>>\n", buffer);
+        if ((pos = PL_strnstr(buffer, (char *)srp->u.data, ulen))) {
+
+            /* gobble username */
+            tmp=buffer;
+            while (tmp[0] != ':') tmp++;
+            tmp++;
+            
+            i=0;
+            while (tmp[i] != ':') i++;
+            tmp[i] = '\0';
+            verifier = PL_strdup(tmp);
+
+            tmp+=i+1; i = 0;
+            while (tmp[i] != ':') i++;
+            tmp[i] = '\0';
+            salt = PL_strdup(tmp);
+
+            tmp+=i+1; i = 0;
+            while (tmp[i] != ':') i++;
+            tmp[i] = '\0';
+            group_index = PORT_Atoi(tmp);
+
+            printf("CB: found user...\n");
+            found = 1;
+            break;
+        } else {
+            /* continue at start of next line */
+            pos = PL_strchr(buffer, '\n');
+            if (!pos)
+                break; /* no more entries - fail */
+            int nextline = pos - buffer - bytes + 1;
+            printf("Seek +%d\n", nextline);
+            PR_Seek(srpvFile, nextline, SEEK_CUR);
+        }
+    }
+
+    if (found == 0) {
+        fprintf(stderr, "couldn't find user '%.*s'\n", srp->u.len, srp->u.data);
+        return SECFailure;
+    }
+
+    config_index = group_index - 1;
+    printf("verifier = %s\nsalt = %s\ngroup = %u\n", verifier, salt, group_index);
+    group_size = srpConfGroupParams.N[config_index].len * 8;
+    
+    SECITEM_AllocItem(NULL, &srp->secret, PL_strlen(verifier));
+    SECITEM_AllocItem(NULL, &srp->s, PL_strlen(salt));
+
+    b64bytes = srp_fromb64((char *)srp->secret.data, verifier);
+    srp->secret.len = b64bytes;
+    b64bytes = srp_fromb64((char *)srp->s.data, salt);
+    srp->s.len = b64bytes;
+    
+    if (group_index > srpConfGroupParams.count) {
+        fprintf(stderr, "invalid group index %d\n", group_index);
+        return SECFailure;
+    }
+
+    rv = SECITEM_CopyItem(NULL, &srp->N, &srpConfGroupParams.N[config_index]);
+    if (rv != SECSuccess) {
+        fprintf(stderr, "SRP callback: couldn't copy SRP N\n");
+        return SECFailure;
+    }
+    SECITEM_CopyItem(NULL, &srp->g, &srpConfGroupParams.g[config_index]);
+    if (rv != SECSuccess) {
+        fprintf(stderr, "SRP callback: couldn't copy SRP g\n");
+        return SECFailure;
+    }
+
+    printf("Callback found a user, group index %d, returning...\n", group_index);
+    return SECSuccess;
+}
+
 void
 handshakeCallback(PRFileDesc *fd, void *client_data)
 {
@@ -1772,6 +2015,14 @@ server_main(
 
     if (MakeCertOK)
 	SSL_BadCertHook(model_sock, myBadCertHandler, NULL);
+
+    if (srpvFile && srpConfFile) {
+        printf("setting SSL_GetSRPParamsHook\n");
+        rv = SSL_GetSRPParamsHook(model_sock, getSRPParamsCallback, srpvFile);
+        if (rv != SECSuccess) {
+            errExit("error setting SRP params callback\n");
+        }
+    }
 
     /* end of ssl configuration. */
 
@@ -1942,8 +2193,8 @@ main(int argc, char **argv)
     secuPWData  pwdata = { PW_NONE, 0 };
     int                  virtServerNameIndex = 1;
     char                *expectedHostNameVal = NULL;
-    char *               srppfilename     = NULL;
-    char *               srpcfilename = NULL;
+    char *               srpvFilename    = NULL;
+    char *               srpConfFilename = NULL;
 
     tmp = strrchr(argv[0], '/');
     tmp = tmp ? tmp + 1 : argv[0];
@@ -1970,8 +2221,8 @@ main(int argc, char **argv)
 
 	case 'D': noDelay = PR_TRUE; break;
 	case 'E': disableStepDown = PR_TRUE; break;
-        case 'H': srpcfilename = PORT_Strdup(optstate->value); break;
-        case 'K': srppfilename = PORT_Strdup(optstate->value); break;
+        case 'H': srpConfFilename = PORT_Strdup(optstate->value); break;
+        case 'K': srpvFilename = PORT_Strdup(optstate->value); break;
         case 'L':
             logStats = PR_TRUE;
 	    if (optstate->value == NULL) {
@@ -2314,26 +2565,6 @@ main(int argc, char **argv)
 	    exit(11);
 	}
 
-        /* open SRP passwd and conf files */
-        if (srppfilename) {
-            srppfile = PR_Open(srppfilename, PR_RDONLY, 0);
-            if (srppfile == NULL) {
-                fprintf(stderr, "Unable to open SRP passwd file.\n");
-                return 1;
-            }
-        }
-        if (srpcfilename) {
-            srpcfile = PR_Open(srpcfilename, PR_RDONLY, 0);
-            if (srpcfile == NULL) {
-                fprintf(stderr, "Unable to open SRP passwd conf file.\n");
-                return 1;
-            }
-        }
-        if ((srppfile && !srpcfile) || (!srppfile && srpcfile)) {
-            fprintf(stderr, "Must specify both SRP passwd and conf files\n");
-            return 1;
-        }
-
 	if (testbypass) {
 	    PRBool bypassOK;
 	    if (SSL_CanBypass(cert[kt_rsa], privKey[kt_rsa], protos, cipherlist, 
@@ -2371,6 +2602,31 @@ main(int argc, char **argv)
        }
     }
 #endif /* NSS_ENABLE_ECC */
+
+    /* open SRP passwd and conf files */
+    if (srpvFilename) {
+        srpvFile = PR_Open(srpvFilename, PR_RDONLY, 0);
+        if (srpvFile == NULL) {
+            fprintf(stderr, "selfserv: Unable to open SRP passwd file %s\n",
+                    srpvFilename);
+            /*return 1;TODO(sqs)*/
+        }
+    }
+    if (srpConfFilename) {
+        srpConfFile = PR_Open(srpConfFilename, PR_RDONLY, 0);
+        if (srpConfFile == NULL) {
+            fprintf(stderr, "selfserv: Unable to open SRP passwd conf %s\n",
+                    srpConfFilename);
+            /*return 1;TODO(sqs)*/
+        }
+    }
+    if ((srpvFile && !srpConfFile) || (!srpvFile && srpConfFile)) {
+        fprintf(stderr, "selfserf: Must specify both SRP passwd and conf\n");
+        return 1;
+    }
+    if (srpvFile && srpConfFile) {
+        parseSRPConf(srpConfFile, &srpConfGroupParams);
+    }
 
     if (testbypass)
 	goto cleanup;

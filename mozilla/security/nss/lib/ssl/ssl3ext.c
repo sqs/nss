@@ -1577,7 +1577,8 @@ ssl3_HandleSRPHelloXtn(sslSocket *ss, PRUint16 ext, SECItem *data)
     if (rv != SECSuccess)
         goto no_memory;
 
-	return rv;
+    printf("   -> got srp username = '%.*s'\n", ss->sec.userName->len, ss->sec.userName->data);
+    return rv;
 no_memory:
     ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);
     return SECFailure;

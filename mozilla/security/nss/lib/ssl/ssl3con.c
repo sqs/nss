@@ -2919,7 +2919,7 @@ ssl3_DeriveMasterSecret(sslSocket *ss, PK11SymKey *pms)
      */
     PRBool    isDH = (PRBool) ((ss->ssl3.hs.kea_def->exchKeyType == kt_dh) ||
 	                       (ss->ssl3.hs.kea_def->exchKeyType == kt_ecdh) ||
-                           (ss->ssl3.hs.kea_def->exchKeyType == kt_srp));
+                               (ss->ssl3.hs.kea_def->exchKeyType == kt_srp));
     SECStatus         rv = SECFailure;
     CK_MECHANISM_TYPE master_derive;
     CK_MECHANISM_TYPE key_derive;
@@ -4831,7 +4831,7 @@ ssl3_HandleSRPServerKeyExchange(sslSocket *ss, SSL3Opaque *b,
     SECKEYPublicKey *peerKey   = NULL;
     SECStatus   rv;
     SSL3Hashes  hashes;
-	SECItem     srp_N, srp_g, srp_s, srp_ppub;
+    SECItem     srp_N, srp_g, srp_s, srp_ppub;
     int         errCode;
 
     rv = ssl3_ConsumeHandshakeVariable(ss, &srp_N, 2, &b, &length);
@@ -5544,7 +5544,7 @@ ssl3_HandleServerKeyExchange(sslSocket *ss, SSL3Opaque *b, PRUint32 length)
 	goto alert_loser;
     }
     if (ss->sec.peerCert == NULL &&
-	ss->ssl3.hs.suite_def->key_exchange_alg != kea_srp) {
+	ss->ssl3.hs.suite_def->key_exchange_alg != kea_srp) { /*TODO(sqs):add srp_rsa/dss*/
 	errCode = SSL_ERROR_RX_UNEXPECTED_SERVER_KEY_EXCH;
 	desc    = unexpected_message;
 	goto alert_loser;
@@ -5740,6 +5740,11 @@ ssl3_HandleServerKeyExchange(sslSocket *ss, SSL3Opaque *b, PRUint32 length)
 	    goto alert_loser;
     }
     return rv;
+
+    case kt_srp_rsa:
+    case kt_srp_dss:
+      printf("UNSUPPORTED kt_srp_rsa/kt_srp_dss\n");
+      /*nobreak; - ADD IN WHEN FIXING THIS TODO(sqs)*/
 
     default:
     	desc    = handshake_failure;
@@ -7353,6 +7358,7 @@ ssl3_SendSRPServerKeyExchange(sslSocket *ss) {
     if (ss->getSRPParams) {
         rv = ss->getSRPParams(ss->fd, srpParams, ss->getSRPParamsArg);
         if (rv != SECSuccess) {
+            printf("FAIL getting server SRP params\n");
             SECITEM_FreeItem(&srpParams->N, PR_FALSE);
             SECITEM_FreeItem(&srpParams->g, PR_FALSE);
             SECITEM_FreeItem(&srpParams->s, PR_FALSE);
@@ -7360,6 +7366,9 @@ ssl3_SendSRPServerKeyExchange(sslSocket *ss) {
             PORT_Free(srpParams);
             goto unknown_id;
         }
+    } else {
+      printf("no SRP params callback func on sslSocket=%p\n", ss);
+      goto loser;
     }
 
     /* create SRP server key pair */
@@ -7381,6 +7390,7 @@ ssl3_SendSRPServerKeyExchange(sslSocket *ss) {
 
         rv = SRP_NewServerKeyPair(&srpPrv, &keyPairParams);
         if (rv != SECSuccess) {
+            printf("FAIL SRP_NewServerKeyPair\n");
     	    ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
             return rv;
         }
@@ -7403,6 +7413,7 @@ ssl3_SendSRPServerKeyExchange(sslSocket *ss) {
         /* input: srpParams, output: prvKey = b,B,v, pubKey = N,g,s,u,B */
         prvKey = SECKEY_CreateSRPPrivateKey(srpParams, &pubKey, PR_TRUE, NULL);
         if (!prvKey) {
+            printf("FAIL SRP_NewServerKeyPair\n");
     	    ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
             rv = SECFailure;
     	    goto cleanup;
@@ -7479,7 +7490,7 @@ cleanup:
     SECITEM_FreeItem(&srpParams->g, PR_FALSE);
     SECITEM_FreeItem(&srpParams->s, PR_FALSE);
     SECITEM_ZfreeItem(&srpParams->secret, PR_FALSE);
-    SECITEM_FreeItem(ss->sec.userName, PR_TRUE);
+    SECITEM_FreeItem(ss->sec.userName, PR_TRUE);/*TODO(sqs):removed this in cr*/
     if (srpParams) PORT_Free(srpParams);
     return rv;
 loser:
@@ -9531,6 +9542,8 @@ const ssl3BulkCipherDef *cipher_def;
 	}
     }
 
+    PRINT_BUF(80, (ss, "raw master secret:", crSpec->msItem.data, crSpec->msItem.len));
+    
     PRINT_BUF(80, (ss, "ciphertext:", cText->buf->buf, cText->buf->len));
 
     cipher_def = crSpec->cipher_def;
@@ -9553,6 +9566,7 @@ const ssl3BulkCipherDef *cipher_def;
         /* All decryption failures must be treated like a bad record
          * MAC; see RFC 5246 (TLS 1.2). 
          */
+      printf("!! Decryption failure\n");
         padIsBad = PR_TRUE;
     }
 
@@ -9561,15 +9575,20 @@ const ssl3BulkCipherDef *cipher_def;
         PRUint8 * pPaddingLen = plaintext->buf + plaintext->len - 1;
 	padding_length = *pPaddingLen;
 	/* TLS permits padding to exceed the block size, up to 255 bytes. */
-	if (padding_length + 1 + crSpec->mac_size > plaintext->len)
+	if (padding_length + 1 + crSpec->mac_size > plaintext->len) {
 	    padIsBad = PR_TRUE;
-	else {
+            printf("!! padding (padding_length=%x [%d], crSpec->mac_size=%d) exceeds plaintext size (%d)\n",
+                   padding_length, padding_length, crSpec->mac_size, plaintext->len);
+	} else {
             plaintext->len -= padding_length + 1;
             /* In TLS all padding bytes must be equal to the padding length. */
             if (isTLS) {
                 PRUint8 *p;
                 for (p = pPaddingLen - padding_length; p < pPaddingLen; ++p) {
                     padIsBad |= *p ^ padding_length;
+                    if (*p ^ padding_length)
+                      printf("!! padding byte (%x) not equal to padding length (%x)\n",
+                             *p, padding_length);
                 }
             }
         }
@@ -9578,8 +9597,10 @@ const ssl3BulkCipherDef *cipher_def;
     /* Remove the MAC. */
     if (plaintext->len >= crSpec->mac_size)
 	plaintext->len -= crSpec->mac_size;
-    else
+    else {
     	padIsBad = PR_TRUE;	/* really macIsBad */
+        printf("!! plaintext length < mac size\n");
+    }
 
     /* compute the MAC */
     rType = cText->type;
@@ -9588,8 +9609,18 @@ const ssl3BulkCipherDef *cipher_def;
 	plaintext->buf, plaintext->len, hash, &hashBytes);
     if (rv != SECSuccess) {
         padIsBad = PR_TRUE;     /* really macIsBad */
+        printf("!! error in ComputeRecordMAC\n");
     }
 
+    PRINT_BUF(80, (ss, "saw  MAC:", plaintext->buf + plaintext->len,
+                   crSpec->mac_size));
+    PRINT_BUF(80, (ss, "comp MAC:", hash, crSpec->mac_size));
+
+    if (NSS_SecureMemcmp(plaintext->buf + plaintext->len, hash,
+	                 crSpec->mac_size) != 0) {
+      printf("!! MACs did not match\n");
+    }
+    
     /* Check the MAC */
     if (hashBytes != (unsigned)crSpec->mac_size || padIsBad || 
 	NSS_SecureMemcmp(plaintext->buf + plaintext->len, hash,

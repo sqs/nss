@@ -1,4 +1,3 @@
-#
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
 #
@@ -35,65 +34,20 @@
 #
 # ***** END LICENSE BLOCK *****
 
-DEPTH	= ../..
-# MODULE	= seccmd
+CORE_DEPTH = ../../..
 
-REQUIRES = nss nspr libdbm
+MODULE  = nss
 
-DIRS = lib  \
- addbuiltin \
- atob  \
- bltest \
- btoa  \
- certcgi \
- certutil  \
- checkcert  \
- crlutil  \
- crmftest \
- dbtest \
- derdump  \
- digest  \
- fipstest  \
- makepqg  \
- multinit \
- ocspclnt  \
- oidcalc  \
- p7content  \
- p7env  \
- p7sign  \
- p7verify  \
- pk12util \
- pk11mode \
- pp  \
- rsaperf \
- sdrtest \
- selfserv  \
- signtool \
- signver \
- shlibsign \
- smimetools  \
- srputil \
- ssltap  \
- strsclnt \
- symkeyutil \
- tests \
- tstclnt  \
- vfychain \
- vfyserv \
- modutil \
- $(NULL)
+REQUIRES = dbm
 
-TEMPORARILY_DONT_BUILD = \
- $(NULL)
+DEFINES +=
 
-# rsaperf  \
-#
-#       needs to look at what needs to happen to make jar build in
-# the binary release environment.
-#
-# perror requires lib/strerror.c which requires the client code installed 
-# to build (requires allxpstr.h)
-#
-DONT_BULD = jar \
- perror \
-$(NULL)
+EXPORTS = 
+
+CSRCS =  srputil.c	\
+	$(NULL)
+
+PROGRAM  = srputil
+
+USE_STATIC_LIBS = 1
+

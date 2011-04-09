@@ -351,6 +351,10 @@ ssl_DupSocket(sslSocket *os)
 	    ss->handshakeCallback     = os->handshakeCallback;
 	    ss->handshakeCallbackData = os->handshakeCallbackData;
 	    ss->pkcs11PinArg          = os->pkcs11PinArg;
+            ss->getUserPasswd         = os->getUserPasswd;
+            ss->getUserPasswdArg      = os->getUserPasswdArg;
+            ss->getSRPParams          = os->getSRPParams;
+            ss->getSRPParamsArg       = os->getSRPParamsArg;
     
 	    /* Create security data */
 	    rv = ssl_CopySecurityInfo(ss, os);
@@ -1377,6 +1381,15 @@ SSL_ReconfigFD(PRFileDesc *model, PRFileDesc *fd)
         ss->handshakeCallbackData = sm->handshakeCallbackData;
     if (sm->pkcs11PinArg)
         ss->pkcs11PinArg          = sm->pkcs11PinArg;
+    if (sm->getUserPasswd)
+        ss->getUserPasswd         = sm->getUserPasswd;
+    if (sm->getUserPasswdArg)
+        ss->getUserPasswdArg      = sm->getUserPasswdArg;
+    if (sm->getSRPParams)
+        ss->getSRPParams          = sm->getSRPParams;
+    if (sm->getSRPParamsArg)
+        ss->getSRPParamsArg       = sm->getSRPParamsArg;
+
     return fd;
 loser:
     return NULL;
@@ -2378,6 +2391,10 @@ ssl_NewSocket(PRBool makeLocks)
 	ss->handleBadCert      = NULL;
 	ss->badCertArg         = NULL;
 	ss->pkcs11PinArg       = NULL;
+        ss->getUserPasswd      = NULL;
+        ss->getUserPasswdArg   = NULL;
+        ss->getSRPParams       = NULL;
+        ss->getSRPParamsArg    = NULL;
 
 	ssl_ChooseOps(ss);
 	ssl2_InitSocketPolicy(ss);

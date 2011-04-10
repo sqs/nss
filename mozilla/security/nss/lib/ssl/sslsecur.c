@@ -983,6 +983,11 @@ ssl_DestroySecurityInfo(sslSecurityInfo *sec)
 {
     ssl_ResetSecurityInfo(sec, PR_FALSE);
 
+    if (sec->userName != NULL) {
+      SECITEM_FreeItem(sec->userName, PR_TRUE);
+      sec->userName = NULL;
+    }
+
     PORT_ZFree(sec->writeBuf.buf, sec->writeBuf.space);
     sec->writeBuf.buf = 0;
 

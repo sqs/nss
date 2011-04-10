@@ -5041,7 +5041,6 @@ ssl3_SendSRPClientKeyExchange(sslSocket *ss, SECKEYPublicKey * pubKey) {
     } /* end of PK11 path */
 
 loser:
-    SECITEM_FreeItem(ss->sec.userName, PR_TRUE);
     SECITEM_ZfreeItem(ss->sec.userPasswd, PR_TRUE);
     PORT_Free(srpParam);
     /* caller frees pubKey */
@@ -7490,7 +7489,6 @@ cleanup:
     SECITEM_FreeItem(&srpParams->g, PR_FALSE);
     SECITEM_FreeItem(&srpParams->s, PR_FALSE);
     SECITEM_ZfreeItem(&srpParams->secret, PR_FALSE);
-    SECITEM_FreeItem(ss->sec.userName, PR_TRUE);/*TODO(sqs):removed this in cr*/
     if (srpParams) PORT_Free(srpParams);
     return rv;
 loser:

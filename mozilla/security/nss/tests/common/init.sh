@@ -101,6 +101,8 @@ if [ -z "${INIT_SOURCED}" -o "${INIT_SOURCED}" != "TRUE" ]; then
         EXT_SERVERDIR=${HOSTDIR}/ext_server
         EXT_CLIENTDIR=${HOSTDIR}/ext_client
 
+        SRPDIR=${HOSTDIR}/srp
+
         IOPR_CADIR=${HOSTDIR}/CA_iopr
         IOPR_SSL_SERVERDIR=${HOSTDIR}/server_ssl_iopr
         IOPR_SSL_CLIENTDIR=${HOSTDIR}/client_ssl_iopr
@@ -533,6 +535,7 @@ if [ -z "${INIT_SOURCED}" -o "${INIT_SOURCED}" != "TRUE" ]; then
     R_CADIR=../CA
     R_SERVERDIR=../server
     R_CLIENTDIR=../client
+    R_SRPDIR=../srp
     R_IOPR_CADIR=../CA_iopr
     R_IOPR_SSL_SERVERDIR=../server_ssl_iopr
     R_IOPR_SSL_CLIENTDIR=../client_ssl_iopr
@@ -556,6 +559,7 @@ if [ -z "${INIT_SOURCED}" -o "${INIT_SOURCED}" != "TRUE" ]; then
     P_R_EVEDIR=${R_EVEDIR}
     P_R_SERVERDIR=${R_SERVERDIR}
     P_R_CLIENTDIR=${R_CLIENTDIR}
+    P_R_SRPDIR=${R_SRPDIR}
     P_R_EXT_SERVERDIR=${R_EXT_SERVERDIR}
     P_R_EXT_CLIENTDIR=${R_EXT_CLIENTDIR}
     if [ -n "${MULTIACCESS_DBM}" ]; then

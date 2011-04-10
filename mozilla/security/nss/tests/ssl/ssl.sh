@@ -130,6 +130,19 @@ ssl_init()
   fi
 
   cd ${CLIENTDIR}
+
+  copy_srp_tpasswd
+}
+
+########################### copy_srp_tpasswd ###########################
+# local shell function to copy SRP tpasswd and tpasswd.conf files
+########################################################################
+copy_srp_tpasswd()
+{
+  mkdir ${R_SRPDIR}
+  cp ${QADIR}/ssl/tpasswd ${R_SRPDIR}/tpasswd
+  cp ${QADIR}/ssl/tpasswd.conf ${R_SRPDIR}/tpasswd.conf
+  pwd
 }
 
 ########################### is_selfserv_alive ##########################

@@ -156,3 +156,9 @@ SSL_SNISocketConfigHook;
 ;+    local:
 ;+*;
 ;+};
+;+NSS_3.12.9_tls_srp { # NSS 3.12.9+tls-srp
+;+    global:
+SSL_GetChannelUsername;
+;+    local:
+;+*;
+;+};

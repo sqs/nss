@@ -39,27 +39,6 @@
 #include "sslimpl.h"
 #include "sslproto.h"
 
-SECStatus
-SSL_GetChannelUsername(PRFileDesc *fd, SECItem *user)
-{
-    SECItem   * username;
-    sslSocket * ss;
-
-    ss = ssl_FindSocket(fd);
-    if (!ss) {
-	SSL_DBG(("%d: SSL[%d]: bad socket in SSL_GetChannelUsername",
-		 SSL_GETPID(), fd));
-	return SECFailure;
-    }
-
-    if (ss->sec.userName == NULL) {
-        PORT_SetError(SEC_ERROR_INVALID_ARGS);
-        return SECFailure;
-    }
-
-    return SECITEM_CopyItem(NULL, user, ss->sec.userName);
-}
-
 static const char *
 ssl_GetCompressionMethodName(SSLCompressionMethod compression)
 {
@@ -389,4 +368,30 @@ SSL_GetNegotiatedHostInfo(PRFileDesc *fd)
         sniName->len  = PORT_Strlen(name);
     }
     return sniName;
+}
+
+SECStatus
+SSL_GetChannelUsername(PRFileDesc *fd, SECItem *user)
+{
+    SECItem   * username;
+    sslSocket * ss;
+
+    ss = ssl_FindSocket(fd);
+    if (!ss) {
+	SSL_DBG(("%d: SSL[%d]: bad socket in SSL_GetChannelUsername",
+		 SSL_GETPID(), fd));
+	return SECFailure;
+    }
+
+    if (ss->sec.userName == NULL) {
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+
+    if (ss->sec.userName->data == NULL) {
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+
+    return SECITEM_CopyItem(NULL, user, ss->sec.userName);
 }

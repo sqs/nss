@@ -821,6 +821,8 @@ logger(void *arg)
 ** End   thread management routines.
 **************************************************************************/
 
+#define MAX_SRP_USERNAME_LENGTH 255
+
 PRBool useModelSocket  = PR_FALSE;
 PRBool disableSSL2     = PR_FALSE;
 PRBool disableSSL3     = PR_FALSE;
@@ -845,8 +847,9 @@ static const char outHeader[] = {
     "Server: Generic Web Server\r\n"
     "Date: Tue, 26 Aug 1997 22:10:05 GMT\r\n"
     "Content-type: text/plain\r\n"
-    "\r\n"
 };
+static const char srpHeader[]  = { "X-TLS-User: %.*s\r\n" };
+static const char endHeader[] = { "\r\n" };
 static const char crlCacheErr[]  = { "CRL ReCache Error: " };
 
 PRUint16 cipherlist[100];
@@ -1103,6 +1106,7 @@ handle_connection(
     char               buf[10240];
     char               fileName[513];
     char               proto[128];
+    char               srpHeaderBuf[sizeof(srpHeader) + MAX_SRP_USERNAME_LENGTH];
     PRDescIdentity     aboveLayer = PR_INVALID_IO_LAYER;
 
     pBuf   = buf;
@@ -1297,6 +1301,21 @@ handle_connection(
 	iovs[numIOVs].iov_base = (char *)outHeader;
 	iovs[numIOVs].iov_len  = (sizeof(outHeader)) - 1;
 	numIOVs++;
+
+        if (srpvFile && srpConfFile) {
+            SECItem srpUser;
+            rv = SSL_GetChannelUsername(ssl_sock, &srpUser);
+            if (rv == SECSuccess) {
+                sprintf(srpHeaderBuf, srpHeader, srpUser.len, srpUser.data);
+                iovs[numIOVs].iov_base = (char *)srpHeaderBuf;
+                iovs[numIOVs].iov_len = strlen(srpHeaderBuf) - 1;
+                numIOVs++;
+            }
+        }
+
+	iovs[numIOVs].iov_base = (char *)endHeader;
+	iovs[numIOVs].iov_len  = (sizeof(endHeader)) - 1;
+	numIOVs++;        
 
 	if (local_file_fd) {
 	    PRInt32     bytes;

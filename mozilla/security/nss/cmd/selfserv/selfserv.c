@@ -95,6 +95,7 @@ static const char inheritableSockName[] = { "SELFSERV_LISTEN_SOCKET" };
 
 #define DEFAULT_BULK_TEST 16384
 #define MAX_BULK_TEST     1048576 /* 1 MB */
+#define MAX_SRP_USERNAME_LENGTH 255
 static PRBool testBulk;
 static PRUint32 testBulkSize       = DEFAULT_BULK_TEST;
 static PRUint32 testBulkTotal;
@@ -342,6 +343,22 @@ disableExportSSLCiphers(void)
 	}
     }
     return rv;
+}
+
+void enableSRPCiphers(void)
+{
+    int i;
+    for (i = 0; i < SSL_NumImplementedCiphers; i++) {
+        SSLCipherSuiteInfo info;
+        if (SSL_GetCipherSuiteInfo(SSL_ImplementedCiphers[i], &info,
+                                   sizeof(info)) == SECSuccess) {
+            SSLKEAType k = info.keaType;
+            if (k == ssl_kea_srp || k == ssl_kea_srp_rsa ||
+                k == ssl_kea_srp_dss) {
+                SSL_CipherPrefSetDefault(SSL_ImplementedCiphers[i], PR_TRUE);
+            }
+        }
+    }
 }
 
 static SECStatus
@@ -2625,6 +2642,7 @@ main(int argc, char **argv)
         return 1;
     }
     if (srpvFile && srpConfFile) {
+        enableSRPCiphers();
         parseSRPConf(srpConfFile, &srpConfGroupParams);
     }
 

@@ -1777,6 +1777,7 @@ parseSRPConf(PRFileDesc *f, SRPConfigGroupParams *srpConf)
 SECStatus
 getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
 {
+    char * uname    = NULL;
     char * verifier = NULL;
     char * salt     = NULL;
     char * tmp      = NULL;
@@ -1790,15 +1791,18 @@ getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
     int found = 0;
 
     PRFileDesc * srpvFile = (PRFileDesc*)arg;
-    
+
     ulen = srp->u.len;
+    uname = PORT_Alloc(ulen + 1);
+    PORT_Memcpy(uname, srp->u.data, ulen);
+    uname[ulen] = '\0';
 
     PR_Seek(srpvFile,0,SEEK_SET);
 
     while ( (bytes = PR_Read(srpvFile, buffer, buflen-1)) ) {
         buffer[bytes] = '\0';
         printf("buf = <<<%s>>>\n", buffer);
-        if ((pos = PL_strnstr(buffer, (char *)srp->u.data, ulen))) {
+        if ((pos = PL_strnstr(buffer, uname, ulen))) {
 
             /* gobble username */
             tmp=buffer;
@@ -1833,6 +1837,8 @@ getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
             PR_Seek(srpvFile, nextline, SEEK_CUR);
         }
     }
+
+    PORT_Free(uname);
 
     if (found == 0) {
         fprintf(stderr, "couldn't find user '%.*s'\n", srp->u.len, srp->u.data);

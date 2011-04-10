@@ -107,7 +107,6 @@ static SECStatus srp_backdoor_check(const mp_int *N, const mp_int *B) {
 
     CHECK_MPI_OK(mp_init(&res));
     CHECK_MPI_OK(mp_mod(B, N, &res));
-    
 
     if ( mp_cmp_z(&res) == 0) {
         PORT_SetError(SEC_ERROR_SRP_ILLEGAL_PARAMETER);
@@ -116,8 +115,8 @@ static SECStatus srp_backdoor_check(const mp_int *N, const mp_int *B) {
 cleanup:
     mp_clear(&res);
     if (err) {
-    	MP_TO_SEC_ERROR(err);
-	    return SECFailure;
+        MP_TO_SEC_ERROR(err);
+        return SECFailure;
     }
     return SECSuccess;
 }
@@ -144,7 +143,7 @@ SECStatus SRP_ServerDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     SHA1Context     *ctx   = SHA1_NewContext();
     SECStatus        rv    = SECFailure;
     mp_err           err   = MP_OKAY;
-    
+
     CHECK_MPI_OK(mp_init(&mp_N));
     CHECK_MPI_OK(mp_init(&mp_g));
     CHECK_MPI_OK(mp_init(&mp_u));
@@ -163,7 +162,7 @@ SECStatus SRP_ServerDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
         PORT_SetError(SEC_ERROR_NO_MEMORY);
         goto cleanup;
     }
-    
+
     /*  u = SHA1( PAD(A) | PAD(B) ) */
     SHA1_Begin(ctx);
     SHA1_Update(ctx, zero, len - srp->ppub.len);
@@ -178,8 +177,8 @@ SECStatus SRP_ServerDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     SHA1_Update(ctx, zero, len - srp->g.len);
     SHA1_Update(ctx, srp->g.data, srp->g.len);
     SHA1_End(ctx, it_k->data, &it_k->len, SHA1_LENGTH);
-    
-    /* 
+
+    /*
      * calculate pms = (A * v^u) ^ b % N
      */
 
@@ -195,17 +194,7 @@ SECStatus SRP_ServerDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     CHECK_MPI_OK(mp_mulmod(&mp_A, &mp_res, &mp_N, &mp_res));
     CHECK_MPI_OK(mp_exptmod(&mp_res, &mp_b, &mp_N, &mp_pms));
 
-    PRINT_MPINT("u", mp_u);
-    PRINT_MPINT("k", mp_k);
-    PRINT_MPINT("N", mp_N);
-    PRINT_MPINT("g", mp_g);
-    PRINT_MPINT("A", mp_A);
-    PRINT_MPINT("v", mp_v);
-    PRINT_MPINT("b", mp_b);
-
     MPINT_TO_SECITEM(&mp_pms, pms, NULL);
-
-    PRINT_MPINT("ServerDerive pms", mp_pms);
 
     rv = SECSuccess;
 cleanup:
@@ -223,8 +212,8 @@ cleanup:
     mp_clear(&mp_pms);
     mp_clear(&mp_res);
     if (err) {
-    	MP_TO_SEC_ERROR(err);
-	    rv = SECFailure;
+        MP_TO_SEC_ERROR(err);
+        rv = SECFailure;
     }
     return rv;
 }
@@ -256,7 +245,7 @@ SECStatus SRP_ClientDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     SHA1Context   *ctx   = SHA1_NewContext();
     unsigned int   len   = srp->N.len;
     SECStatus rv = SECFailure;
-    
+
     if (prvKey->secret.len == 0) {
         /* XXX this error is probably meant for token passwords
          * anyway, we use it to show missing password in bypass mode*/
@@ -275,7 +264,7 @@ SECStatus SRP_ClientDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     CHECK_MPI_OK(mp_init(&mp_res1));
     CHECK_MPI_OK(mp_init(&mp_res2));
     CHECK_MPI_OK(mp_init(&mp_pms));
-    
+
     /* check server-supplied parameters */
     SECITEM_TO_MPINT(srp->N,   &mp_N);
     SECITEM_TO_MPINT(srp->g,   &mp_g);
@@ -305,21 +294,21 @@ SECStatus SRP_ClientDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     SHA1_Update(ctx, zero, len - srp->ppub.len);
     SHA1_Update(ctx, srp->ppub.data, srp->ppub.len);
     SHA1_End(ctx, it_u->data, &it_u->len, SHA1_LENGTH);
-    
+
     /*  k = SHA1( N | PAD(g) ) */
     SHA1_Begin(ctx);
     SHA1_Update(ctx, srp->N.data, srp->N.len);
     SHA1_Update(ctx, zero, len - srp->g.len);
     SHA1_Update(ctx, srp->g.data, srp->g.len);
     SHA1_End(ctx, it_k->data, &it_k->len, SHA1_LENGTH);
-    
+
     /*  x = SHA1(s | SHA1(I | ":" | P)) */
     SHA1_Begin(ctx);
     SHA1_Update(ctx, srp->u.data, srp->u.len);
     SHA1_Update(ctx,(unsigned char *)":",1);
     SHA1_Update(ctx, prvKey->secret.data, prvKey->secret.len);
     SHA1_End(ctx, it_x->data, &it_x->len, SHA1_LENGTH);
-    
+
     SHA1_Begin(ctx);
     SHA1_Update(ctx, srp->s.data, srp->s.len);
     SHA1_Update(ctx, it_x->data, it_x->len);
@@ -328,7 +317,7 @@ SECStatus SRP_ClientDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     /*
      * compute pms = (B - (k * g^x)) ^ (a + (u * x)) % N
      */
-    
+
     SECITEM_TO_MPINT(*it_u, &mp_u);
     SECITEM_TO_MPINT(*it_k, &mp_k);
     SECITEM_TO_MPINT(*it_x, &mp_x);
@@ -349,11 +338,11 @@ SECStatus SRP_ClientDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     PRINT_MPINT("a", mp_a);
     PRINT_MPINT("A", mp_A);
     PRINT_MPINT("B", mp_B);
-    
+
     MPINT_TO_SECITEM(&mp_pms, pms, NULL);
 
     PRINT_MPINT("ClientDerive pms", mp_pms);
-    
+
     rv = SECSuccess;
 cleanup:
     PORT_Free(zero);
@@ -373,8 +362,8 @@ cleanup:
     mp_clear(&mp_res1);
     mp_clear(&mp_res2);
     if (err) {
-    	MP_TO_SEC_ERROR(err);
-	    rv = SECFailure;
+        MP_TO_SEC_ERROR(err);
+        rv = SECFailure;
     }
     return rv;
 }
@@ -384,7 +373,7 @@ cleanup:
  * creates a new srp key pair for the server
  *
  * k = SHA1(N | PAD(g))
- * pubKey = k*v + g^prvKey % N 
+ * pubKey = k*v + g^prvKey % N
  */
 SECStatus SRP_NewServerKeyPair(SRPPrivateKey **prvKey, SRPKeyPairParams *srp) {
 
@@ -396,8 +385,7 @@ SECStatus SRP_NewServerKeyPair(SRPPrivateKey **prvKey, SRPKeyPairParams *srp) {
     mp_err           err = MP_OKAY;
     SECStatus        rv  = SECFailure;
     SHA1Context     *ctx = SHA1_NewContext();
-    
-    
+
     if (!srp || !prvKey) {
         PORT_SetError(SEC_ERROR_INVALID_ARGS);
         return SECFailure;
@@ -418,7 +406,7 @@ SECStatus SRP_NewServerKeyPair(SRPPrivateKey **prvKey, SRPKeyPairParams *srp) {
     /* prv=rand() */
     SECITEM_AllocItem(arena, &key->prvKey, SRP_SECRET_KEY_LEN);
     rv = RNG_GenerateGlobalRandomBytes(key->prvKey.data, key->prvKey.len);
-    
+
     if (rv != SECSuccess || !(&key->prvKey)) {
         PORT_SetError(SEC_ERROR_NO_MEMORY);
         PORT_FreeArena(arena, PR_TRUE);
@@ -463,18 +451,6 @@ SECStatus SRP_NewServerKeyPair(SRPPrivateKey **prvKey, SRPKeyPairParams *srp) {
       goto cleanup;
     }
     SECITEM_TO_MPINT(key->prvKey, &mp_prv);
-    
-    char *N_str;
-    char *g_str;
-    printf("X\n");
-        N_str = PORT_ZAlloc(mp_radix_size(&mp_N,16));
-        mp_toradix(&mp_N,N_str,16);
-        printf("%s\n",N_str);
-        g_str = PORT_ZAlloc(mp_radix_size(&mp_g,16));
-        mp_toradix(&mp_g,g_str,16);
-        printf("%s\n",g_str);
-    printf("X\n");
-
 
     /* pub = k*v + g^prv % N */
     CHECK_MPI_OK(mp_exptmod(&mp_g, &mp_prv, &mp_N, &mp_pub));
@@ -520,18 +496,18 @@ SECStatus SRP_NewClientKeyPair(SRPPrivateKey **prvKey, SRPKeyPairParams *srp) {
     mp_int	mp_N, mp_g, mp_prv, mp_pub;
     mp_err      err  = MP_OKAY;
     SECStatus   rv = SECFailure;
-    
+
     if (!srp || !prvKey) {
         PORT_SetError(SEC_ERROR_INVALID_ARGS);
         return SECFailure;
     }
-    
+
     arena = PORT_NewArena(NSS_FREEBL_DEFAULT_CHUNKSIZE);
     if (!arena) {
         PORT_SetError(SEC_ERROR_NO_MEMORY);
         return SECFailure;
     }
-    
+
     key = (SRPPrivateKey *)PORT_ArenaZAlloc(arena, sizeof(SRPPrivateKey));
     if (!key) {
         PORT_SetError(SEC_ERROR_NO_MEMORY);
@@ -563,7 +539,7 @@ SECStatus SRP_NewClientKeyPair(SRPPrivateKey **prvKey, SRPKeyPairParams *srp) {
         goto cleanup;
 
     CHECK_MPI_OK( mp_exptmod(&mp_g, &mp_prv, &mp_N, &mp_pub) );
-    
+
     MPINT_TO_SECITEM(&mp_pub, &key->pubKey, key->arena);
     CHECK_SEC_OK( SECITEM_CopyItem(arena, &key->secret, &srp->secret) );
     *prvKey = key;

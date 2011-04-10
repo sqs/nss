@@ -1794,8 +1794,8 @@ PK11_PubDerive(SECKEYPrivateKey *privKey, SECKEYPublicKey *pubKey,
         keyType = PK11_GetKeyType(target,keySize);
         key_size = keySize;
         symKey->size = keySize;
-        if (key_size == 0) 
-        	templateCount--;
+        if (key_size == 0)
+            templateCount--;
 
         mechParams = PORT_ZNew(CK_SRP_PARAMS);
         if (!mechParams) {
@@ -1821,7 +1821,8 @@ PK11_PubDerive(SECKEYPrivateKey *privKey, SECKEYPublicKey *pubKey,
 
         pk11_EnterKeyMonitor(symKey);
         crv = PK11_GETTAB(slot)->C_DeriveKey(symKey->session, &mechanism, 
-        	privKey->pkcs11ID, keyTemplate, templateCount, &symKey->objectID);
+                                             privKey->pkcs11ID, keyTemplate,
+                                             templateCount, &symKey->objectID);
         pk11_ExitKeyMonitor(symKey);
 
 	    if (crv == CKR_OK) return symKey;

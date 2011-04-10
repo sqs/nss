@@ -62,7 +62,7 @@ typedef uint16 ssl3CipherSuite;
 #define SSL3_RECORD_HEADER_LENGTH	 5
 
 #define MAX_FRAGMENT_LENGTH		16384
-     
+
 #define MAX_SRP_USERNAME_LENGTH 255
      
 typedef enum {
@@ -140,8 +140,7 @@ typedef enum {
     unrecognized_name               = 112,
     bad_certificate_status_response = 113,
     bad_certificate_hash_value      = 114,
-
-    unknown_psk_identity    = 115
+    unknown_psk_identity            = 115
 
 } SSL3AlertDescription;
 

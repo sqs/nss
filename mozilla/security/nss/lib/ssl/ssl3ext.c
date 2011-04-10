@@ -1533,7 +1533,7 @@ ssl3_SendSRPHelloXtn(sslSocket * ss, PRBool append,
                                          PRUint32 maxBytes)
 {
     SECItem     * user = ss->sec.userName;
- 
+
     if (user == NULL)
         return 0; /* no credentials, no extension */
 
@@ -1560,15 +1560,15 @@ ssl3_HandleSRPHelloXtn(sslSocket *ss, PRUint16 ext, SECItem *data)
 {
     SECStatus       rv;
     SECItem         username;
-    
-	rv = ssl3_ConsumeHandshakeVariable(ss, &username, 1, &data->data, &data->len);
+
+    rv = ssl3_ConsumeHandshakeVariable(ss, &username, 1, &data->data, &data->len);
     if (rv != SECSuccess)
         return rv;
 
     /* enforce SRP username length constrain */
     if (data->len > MAX_SRP_USERNAME_LENGTH)
         data->len = MAX_SRP_USERNAME_LENGTH;
-    
+
     ss->sec.userName = PORT_ZAlloc(sizeof(SECItem));
     if (!ss->sec.userName)
         goto no_memory;
@@ -1577,7 +1577,6 @@ ssl3_HandleSRPHelloXtn(sslSocket *ss, PRUint16 ext, SECItem *data)
     if (rv != SECSuccess)
         goto no_memory;
 
-    printf("   -> got srp username = '%.*s'\n", ss->sec.userName->len, ss->sec.userName->data);
     return rv;
 no_memory:
     ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);

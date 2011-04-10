@@ -4078,60 +4078,62 @@ ecgn_done:
     case CKM_NSS_SRP_CLIENT_KEY_PAIR_GEN:
 
 	sftk_DeleteAttributeType(privateKey, CKA_NSS_SRP_SECRET);
-    sftk_DeleteAttributeType(privateKey, CKA_VALUE);
-    sftk_DeleteAttributeType(privateKey, CKA_NETSCAPE_DB);
+        sftk_DeleteAttributeType(privateKey, CKA_VALUE);
+        sftk_DeleteAttributeType(privateKey, CKA_NETSCAPE_DB);
 	key_type = CKK_SRP;
-    
-    /* if no secret was provided for softtoken, die */
-    crv = sftk_ConstrainAttribute(publicKey, CKA_NSS_SRP_SECRET, 1, 0, 0);
+
+        /* if no secret was provided for softtoken, die */
+        crv = sftk_ConstrainAttribute(publicKey, CKA_NSS_SRP_SECRET, 1, 0, 0);
 	if (crv != CKR_OK) break;
 
-    crv = sftk_Attribute2SSecItem(NULL, &srpParams.secret, publicKey, CKA_NSS_SRP_SECRET);
+        crv = sftk_Attribute2SSecItem(NULL, &srpParams.secret, publicKey,
+                                      CKA_NSS_SRP_SECRET);
 	if (crv != CKR_OK) break;
-    crv = sftk_Attribute2SSecItem(NULL, &srpParams.g, publicKey, CKA_BASE);
+        crv = sftk_Attribute2SSecItem(NULL, &srpParams.g, publicKey, CKA_BASE);
 	if (crv != CKR_OK) break;
-    crv = sftk_Attribute2SSecItem(NULL, &srpParams.N, publicKey, CKA_MODULUS);
+        crv = sftk_Attribute2SSecItem(NULL, &srpParams.N, publicKey,
+                                      CKA_MODULUS);
 	if (crv != CKR_OK) break;
 
-    if (pMechanism->mechanism == CKM_NSS_SRP_SERVER_KEY_PAIR_GEN) {
-        rv = SRP_NewServerKeyPair(&srpPriv, &srpParams);
-    } else {
-        rv = SRP_NewClientKeyPair(&srpPriv, &srpParams);
-    }
+        if (pMechanism->mechanism == CKM_NSS_SRP_SERVER_KEY_PAIR_GEN) {
+            rv = SRP_NewServerKeyPair(&srpPriv, &srpParams);
+        } else {
+            rv = SRP_NewClientKeyPair(&srpPriv, &srpParams);
+        }
 
-	if (rv != SECSuccess) { 
-	    crv = CKR_DEVICE_ERROR;
-        /* these two failures must be propagated to trigger SSL_SendAlert() */
-        if (PORT_GetError() == SEC_ERROR_SRP_UNSUPPORTED_GROUP)
-            crv = CKR_NSS_SRP_UNSUPPORTED_GROUP;
-        if (PORT_GetError() == SEC_ERROR_SRP_ILLEGAL_PARAMETER)
-            crv = CKR_NSS_SRP_ILLEGAL_PARAMETER;
-	    break;
-	}
+        if (rv != SECSuccess) {
+            crv = CKR_DEVICE_ERROR;
+            /* these two failures must be propagated to trigger SSL_SendAlert */
+            if (PORT_GetError() == SEC_ERROR_SRP_UNSUPPORTED_GROUP)
+                crv = CKR_NSS_SRP_UNSUPPORTED_GROUP;
+            if (PORT_GetError() == SEC_ERROR_SRP_ILLEGAL_PARAMETER)
+                crv = CKR_NSS_SRP_ILLEGAL_PARAMETER;
+            break;
+        }
 
-    /* If this were a real token and srpParams were empty, the token must *
-     * know and return the needed srpParams or fail. In case of a soft    *
-     * token however, the token knows nothing. Thus we return the key pair*
-     * and secret at this point or fail if srpParams values are missing.  */
+        /* If this were a real token and srpParams were empty, the token must *
+         * know and return the needed srpParams or fail. In case of a soft    *
+         * token however, the token knows nothing. Thus we return the key pair*
+         * and secret at this point or fail if srpParams values are missing.  */
 
-	crv = sftk_AddAttributeType(privateKey, CKA_NSS_SRP_SECRET, 
-		                    sftk_item_expand(&srpParams.secret));
-	if (crv != CKR_OK) goto srpgn_done;
-	crv = sftk_AddAttributeType(privateKey, CKA_VALUE, 
-			                sftk_item_expand(&srpPriv->prvKey));
-	if (crv != CKR_OK) goto srpgn_done;
-    crv = sftk_AddAttributeType(privateKey, CKA_NETSCAPE_DB,
-			                sftk_item_expand(&srpPriv->pubKey));
-	if (crv != CKR_OK) goto srpgn_done;
-	crv = sftk_AddAttributeType(publicKey, CKA_VALUE, 
-				            sftk_item_expand(&srpPriv->pubKey));
-	if (crv != CKR_OK) goto srpgn_done;
+        crv = sftk_AddAttributeType(privateKey, CKA_NSS_SRP_SECRET,
+                                    sftk_item_expand(&srpParams.secret));
+        if (crv != CKR_OK) goto srpgn_done;
+        crv = sftk_AddAttributeType(privateKey, CKA_VALUE, 
+                                    sftk_item_expand(&srpPriv->prvKey));
+        if (crv != CKR_OK) goto srpgn_done;
+        crv = sftk_AddAttributeType(privateKey, CKA_NETSCAPE_DB,
+                                    sftk_item_expand(&srpPriv->pubKey));
+        if (crv != CKR_OK) goto srpgn_done;
+        crv = sftk_AddAttributeType(publicKey, CKA_VALUE, 
+                                    sftk_item_expand(&srpPriv->pubKey));
+        if (crv != CKR_OK) goto srpgn_done;
 
 srpgn_done:
 	PORT_FreeArena(srpPriv->arena, PR_TRUE); /* not zeroized!! */
-    SECITEM_FreeItem(&srpParams.secret, PR_FALSE);
-    SECITEM_FreeItem(&srpParams.g, PR_FALSE);
-    SECITEM_FreeItem(&srpParams.N, PR_FALSE);
+        SECITEM_FreeItem(&srpParams.secret, PR_FALSE);
+        SECITEM_FreeItem(&srpParams.g, PR_FALSE);
+        SECITEM_FreeItem(&srpParams.N, PR_FALSE);
 	break;
 
     default:
@@ -6267,7 +6269,7 @@ jpakeFinal:
 
     case CKM_NSS_SRP_DERIVE:
         {
-    	CK_SRP_PARAMS       *mechParams;
+        CK_SRP_PARAMS       *mechParams;
         NSSLOWKEYPrivateKey *privKey;
         SRPDeriveParams     params;
         SECItem             pms = {0, NULL, 0};

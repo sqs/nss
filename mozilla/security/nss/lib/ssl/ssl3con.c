@@ -744,7 +744,7 @@ ssl3_config_match_init(sslSocket *ss)
 		   ((!isServer || (svrAuth->serverKeyPair &&
 		                   svrAuth->SERVERKEY &&
 				   svrAuth->serverCertChain) ||
-             cipher_def->key_exchange_alg == kea_srp) &&
+                     cipher_def->key_exchange_alg == kea_srp) &&
 		    PK11_TokenExists(kea_alg_defs[exchKeyType]))) &&
 		((cipher_alg == calg_null) || PK11_TokenExists(cipher_mech)));
 	    if (suite->isPresent)
@@ -1137,41 +1137,41 @@ ssl3_ComputeSRPKeyHash(SECItem *N, SECItem *g, SECItem *s, SECItem *B,
     unsigned int  bufLen;
 
     bufLen = 2*SSL3_RANDOM_LENGTH + N->len + 2 + g->len + 2
-                                  + s->len + 1 + B->len + 2;
+             + s->len + 1 + B->len + 2;
 
     hashBuf = PORT_Alloc(bufLen);
-	if (!hashBuf) {
-	    return SECFailure;
-	}
+    if (!hashBuf) {
+        return SECFailure;
+    }
 
     memcpy(hashBuf, client_rand, SSL3_RANDOM_LENGTH); 
-    	pBuf = hashBuf + SSL3_RANDOM_LENGTH;
+    pBuf = hashBuf + SSL3_RANDOM_LENGTH;
     memcpy(pBuf, server_rand, SSL3_RANDOM_LENGTH);
-    	pBuf += SSL3_RANDOM_LENGTH;
+    pBuf += SSL3_RANDOM_LENGTH;
     pBuf[0] = (PRUint8)(N->len >> 8);
     pBuf[1] = (PRUint8)(N->len);
-        pBuf+=2;
+    pBuf+=2;
     memcpy(pBuf, N->data, N->len);
-    	pBuf += N->len;
+    pBuf += N->len;
     pBuf[0] = (PRUint8)(g->len >> 8);
     pBuf[1] = (PRUint8)(g->len);
-        pBuf+=2;
+    pBuf+=2;
     memcpy(pBuf, g->data, g->len);
-    	pBuf += g->len;
+    pBuf += g->len;
     pBuf[0] = (PRUint8)(s->len);
-        pBuf+=1;
+    pBuf+=1;
     memcpy(pBuf, s->data, s->len);
-    	pBuf += s->len;
+    pBuf += s->len;
     pBuf[0] = (PRUint8)(B->len >> 8);
     pBuf[1] = (PRUint8)(B->len);
-        pBuf+=2;
+    pBuf+=2;
     memcpy(pBuf, B->data, B->len);
-    	pBuf += B->len;
+    pBuf += B->len;
 
     rv = ssl3_ComputeCommonKeyHash(hashBuf, bufLen, hashes, bypassPKCS11);
 
     if (hashBuf)
-    	PORT_Free(hashBuf);
+        PORT_Free(hashBuf);
     return rv;
 }
 
@@ -4966,15 +4966,15 @@ ssl3_SendSRPClientKeyExchange(sslSocket *ss, SECKEYPublicKey * pubKey) {
         if (SECSuccess != SRP_ClientDerive(prvKey, &deriveParam, &pms)) {
             goto derive_fail;
         }
-        
+
         /* client key exchange data */
         rv = ssl3_AppendHandshakeHeader(ss, client_key_exchange,
-                                                prvKey->pubKey.len + 2);
+                                        prvKey->pubKey.len + 2);
         if (rv != SECSuccess) goto loser; /* err set by ssl3_AppendHandshake* */
         rv = ssl3_AppendHandshakeVariable(ss, prvKey->pubKey.data,
-                                                prvKey->pubKey.len, 2);
+                                          prvKey->pubKey.len, 2);
         if (rv != SECSuccess) goto loser; /* err set by ssl3_AppendHandshake* */
-        
+
         /* init pending cipher spec*/
         rv = ssl3_MasterKeyDeriveBypass(ss->ssl3.pwSpec,
                     (unsigned char *)&ss->ssl3.hs.client_random,
@@ -4987,14 +4987,14 @@ ssl3_SendSRPClientKeyExchange(sslSocket *ss, SECKEYPublicKey * pubKey) {
                                                 SSL3_MASTER_SECRET_LENGTH);
         }
         rv = ssl3_InitPendingCipherSpec(ss, NULL);
-        
+
         SECITEM_FreeItem(&pms, PR_FALSE);
         PORT_FreeArena(prvKey->arena, PR_TRUE);
     } else { /* PK11 path */
         PK11SymKey       *pms       = NULL;
         SECKEYPrivateKey *prvKey    = NULL;
         SECKEYPublicKey  *newPub    = NULL;
-    
+
         srpParam->N.data = pubKey->u.srp.N.data;
         srpParam->N.len  = pubKey->u.srp.N.len;
         srpParam->g.data = pubKey->u.srp.g.data;
@@ -5010,32 +5010,33 @@ ssl3_SendSRPClientKeyExchange(sslSocket *ss, SECKEYPublicKey * pubKey) {
 
         prvKey = SECKEY_CreateSRPPrivateKey(srpParam, &newPub, PR_FALSE, NULL);
         if (!prvKey) {
-	        ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
-	        rv = SECFailure;
-    	    goto loser;
+            ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
+            rv = SECFailure;
+            goto loser;
         }
         SECITEM_CopyItem(newPub->arena, &newPub->u.srp.ppub, &pubKey->u.srp.ppub);
-    
+
         /* Now all data is in newPub and prvKey, compute pms with them */
         pms = PK11_PubDerive(prvKey, newPub, PR_FALSE, NULL, NULL,
-    			    CKM_NSS_SRP_DERIVE, CKM_TLS_MASTER_KEY_DERIVE, CKF_DERIVE, 0, NULL);
+                             CKM_NSS_SRP_DERIVE, CKM_TLS_MASTER_KEY_DERIVE,
+                             CKF_DERIVE, 0, NULL);
 
         if (!pms) {
             goto derive_fail;
         }
-    
+
         /* init pending cipher spec*/
         rv = ssl3_InitPendingCipherSpec(ss, pms);
 
 
         /* client key exchange data */
         rv = ssl3_AppendHandshakeHeader(ss, client_key_exchange,
-                                                    newPub->u.srp.pub.len + 2);
+                                        newPub->u.srp.pub.len + 2);
         if (rv != SECSuccess) goto loser; /* err set by ssl3_AppendHandshake* */
         rv = ssl3_AppendHandshakeVariable(ss, newPub->u.srp.pub.data,
-                                                    newPub->u.srp.pub.len, 2);
+                                          newPub->u.srp.pub.len, 2);
         if (rv != SECSuccess) goto loser; /* err set by ssl3_AppendHandshake* */
-    
+
         if (pms) PK11_FreeSymKey(pms);
         SECKEY_DestroyPublicKey(newPub);
     } /* end of PK11 path */
@@ -7337,7 +7338,7 @@ ssl3_SendSRPServerKeyExchange(sslSocket *ss) {
     SECKEYPrivateKey *prvKey      = NULL;
     SECKEYSRPParams  *srpParams;
     SSL3Hashes        hashes;
-    
+
     /* send error if no userid was supplied in Client Hello */
     if (!ss->sec.userName || !ss->sec.userName->data)
         goto unknown_id;
@@ -7390,7 +7391,7 @@ ssl3_SendSRPServerKeyExchange(sslSocket *ss) {
         rv = SRP_NewServerKeyPair(&srpPrv, &keyPairParams);
         if (rv != SECSuccess) {
             printf("FAIL SRP_NewServerKeyPair\n");
-    	    ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
+            ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
             return rv;
         }
         prvKey = (SECKEYPrivateKey *)srpPrv;
@@ -7406,16 +7407,14 @@ ssl3_SendSRPServerKeyExchange(sslSocket *ss) {
         SECITEM_CopyItem(arena, &srp->s,   &srpParams->s);
         SECITEM_CopyItem(arena, &srp->u,   &srpParams->u);
         SECITEM_CopyItem(arena, &srp->pub, &srpPrv->pubKey);
-        
     } else {
-
         /* input: srpParams, output: prvKey = b,B,v, pubKey = N,g,s,u,B */
         prvKey = SECKEY_CreateSRPPrivateKey(srpParams, &pubKey, PR_TRUE, NULL);
         if (!prvKey) {
             printf("FAIL SRP_NewServerKeyPair\n");
-    	    ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
+            ssl_MapLowLevelError(SEC_ERROR_KEYGEN_FAIL);
             rv = SECFailure;
-    	    goto cleanup;
+            goto cleanup;
         }
         srp = &pubKey->u.srp;
     }
@@ -7425,9 +7424,9 @@ ssl3_SendSRPServerKeyExchange(sslSocket *ss) {
 
     if (kea_def->kea != kea_srp) { /* we need a RSA/DSA signature */
         rv = ssl3_ComputeSRPKeyHash(&srp->N, &srp->g, &srp->s, &srp->pub,
-				                             &ss->ssl3.hs.client_random,
-				                             &ss->ssl3.hs.server_random,
-				                             &hashes, ss->opt.bypassPKCS11);
+                                    &ss->ssl3.hs.client_random,
+                                    &ss->ssl3.hs.server_random,
+                                    &hashes, ss->opt.bypassPKCS11);
         if (rv != SECSuccess) {
 	        ssl_MapLowLevelError(SSL_ERROR_SERVER_KEY_EXCHANGE_FAILURE);
 	        goto loser;
@@ -7443,7 +7442,7 @@ ssl3_SendSRPServerKeyExchange(sslSocket *ss) {
             PORT_SetError(SSL_ERROR_CERT_KEA_MISMATCH);
             return SECFailure;
         }
-        rv = ssl3_SignHashes(&hashes, ss->serverCerts[bytes].SERVERKEY, 
+        rv = ssl3_SignHashes(&hashes, ss->serverCerts[bytes].SERVERKEY,
                                                      &signed_hash, PR_TRUE);
         bytes = 2 + signed_hash.len;
     }
@@ -7942,7 +7941,7 @@ double_bypass:
     return SECSuccess;
 }
 
-/* 
+/*
  * extract SRP value A from ClientKeyExchange
  * calculate pre-master-secret and init cipher specs
  *
@@ -7950,33 +7949,31 @@ double_bypass:
  */
 SECStatus
 ssl3_HandleSRPClientKeyExchange(sslSocket *ss, SSL3Opaque *b,
-                                PRUint32 length) {
-    
+                                PRUint32 length) {    
     SECItem         ppub; /* peers public key ('A') */
     sslServerCerts  sc;
     SECStatus       rv      = SECFailure;
     SECKEYPublicKey *pubKey = NULL;
 
-    
     PORT_Assert( ss->opt.noLocks || ssl_HaveRecvBufLock(ss) );
     PORT_Assert( ss->opt.noLocks || ssl_HaveSSL3HandshakeLock(ss) );
-    
-	rv = ssl3_ConsumeHandshakeVariable(ss, &ppub, 2, &b, &length);
-	if (rv != SECSuccess) {
-	    PORT_SetError(SSL_ERROR_CLIENT_KEY_EXCHANGE_FAILURE);
-	    return SECFailure;
-	}
+
+    rv = ssl3_ConsumeHandshakeVariable(ss, &ppub, 2, &b, &length);
+    if (rv != SECSuccess) {
+        PORT_SetError(SSL_ERROR_CLIENT_KEY_EXCHANGE_FAILURE);
+        return SECFailure;
+    }
 
     sc = ss->serverCerts[kt_srp];
     pubKey = sc.serverKeyPair->pubKey;
-    
+
     SECITEM_CopyItem(pubKey->arena, &pubKey->u.srp.ppub, &ppub);
 
     if (ss->opt.bypassPKCS11) {
         SRPPrivateKey    *prvKey  = NULL;
         SECItem           pms     = { 0, NULL, 0 };
         SRPDeriveParams   param;
-        
+
         prvKey = (SRPPrivateKey *)sc.serverKeyPair->privKey;
 
         param.N.data = pubKey->u.srp.N.data;
@@ -7988,7 +7985,7 @@ ssl3_HandleSRPClientKeyExchange(sslSocket *ss, SSL3Opaque *b,
 
         if (SECSuccess != SRP_ServerDerive(prvKey, &param, &pms))
             goto derive_fail;
-	
+
         ssl_GetSpecWriteLock(ss);
         /* create MS out of MS, bypassing PKCS11 */
         rv = ssl3_MasterKeyDeriveBypass(ss->ssl3.pwSpec,
@@ -7998,11 +7995,12 @@ ssl3_HandleSRPClientKeyExchange(sslSocket *ss, SSL3Opaque *b,
         if (rv != SECSuccess) {
             ss->ssl3.pwSpec->msItem.data = ss->ssl3.pwSpec->raw_master_secret;
             ss->ssl3.pwSpec->msItem.len  = SSL3_MASTER_SECRET_LENGTH;
-            PK11_GenerateRandom(ss->ssl3.pwSpec->msItem.data, ss->ssl3.pwSpec->msItem.len);
+            PK11_GenerateRandom(ss->ssl3.pwSpec->msItem.data,
+                                ss->ssl3.pwSpec->msItem.len);
         }
 
         rv = ssl3_InitPendingCipherSpec(ss, NULL);
-        
+
         SECITEM_ZfreeItem(&pms, PR_FALSE);
         PORT_FreeArena(prvKey->arena, PR_TRUE); /* XXX FreeArena does not zeroize! */
         sc.serverKeyPair->privKey = NULL;
@@ -8015,16 +8013,17 @@ ssl3_HandleSRPClientKeyExchange(sslSocket *ss, SSL3Opaque *b,
 
         /* Calculate PMS based on clntKey and public params */
         pms = PK11_PubDerive(prvKey, pubKey, PR_TRUE, NULL, NULL,
-	    		    CKM_NSS_SRP_DERIVE, CKM_TLS_MASTER_KEY_DERIVE, CKF_DERIVE, 0, NULL);
+                             CKM_NSS_SRP_DERIVE, CKM_TLS_MASTER_KEY_DERIVE,
+                             CKF_DERIVE, 0, NULL);
 
         if (!pms) {
             goto derive_fail;
         }
 
-	    ssl_GetSpecWriteLock(ss);
+        ssl_GetSpecWriteLock(ss);
         /* derive master secret from pms */
         rv = ssl3_InitPendingCipherSpec(ss, pms);
-	    ssl_ReleaseSpecWriteLock(ss);
+        ssl_ReleaseSpecWriteLock(ss);
         
         PK11_FreeSymKey(pms);
         /*SECKEY_DestroyPrivateKey(prvKey);*/
@@ -9540,8 +9539,6 @@ const ssl3BulkCipherDef *cipher_def;
 	}
     }
 
-    PRINT_BUF(80, (ss, "raw master secret:", crSpec->msItem.data, crSpec->msItem.len));
-    
     PRINT_BUF(80, (ss, "ciphertext:", cText->buf->buf, cText->buf->len));
 
     cipher_def = crSpec->cipher_def;
@@ -9564,7 +9561,6 @@ const ssl3BulkCipherDef *cipher_def;
         /* All decryption failures must be treated like a bad record
          * MAC; see RFC 5246 (TLS 1.2). 
          */
-      printf("!! Decryption failure\n");
         padIsBad = PR_TRUE;
     }
 
@@ -9573,20 +9569,15 @@ const ssl3BulkCipherDef *cipher_def;
         PRUint8 * pPaddingLen = plaintext->buf + plaintext->len - 1;
 	padding_length = *pPaddingLen;
 	/* TLS permits padding to exceed the block size, up to 255 bytes. */
-	if (padding_length + 1 + crSpec->mac_size > plaintext->len) {
+	if (padding_length + 1 + crSpec->mac_size > plaintext->len)
 	    padIsBad = PR_TRUE;
-            printf("!! padding (padding_length=%x [%d], crSpec->mac_size=%d) exceeds plaintext size (%d)\n",
-                   padding_length, padding_length, crSpec->mac_size, plaintext->len);
-	} else {
+	else {
             plaintext->len -= padding_length + 1;
             /* In TLS all padding bytes must be equal to the padding length. */
             if (isTLS) {
                 PRUint8 *p;
                 for (p = pPaddingLen - padding_length; p < pPaddingLen; ++p) {
                     padIsBad |= *p ^ padding_length;
-                    if (*p ^ padding_length)
-                      printf("!! padding byte (%x) not equal to padding length (%x)\n",
-                             *p, padding_length);
                 }
             }
         }
@@ -9595,10 +9586,8 @@ const ssl3BulkCipherDef *cipher_def;
     /* Remove the MAC. */
     if (plaintext->len >= crSpec->mac_size)
 	plaintext->len -= crSpec->mac_size;
-    else {
+    else
     	padIsBad = PR_TRUE;	/* really macIsBad */
-        printf("!! plaintext length < mac size\n");
-    }
 
     /* compute the MAC */
     rType = cText->type;
@@ -9607,18 +9596,8 @@ const ssl3BulkCipherDef *cipher_def;
 	plaintext->buf, plaintext->len, hash, &hashBytes);
     if (rv != SECSuccess) {
         padIsBad = PR_TRUE;     /* really macIsBad */
-        printf("!! error in ComputeRecordMAC\n");
     }
 
-    PRINT_BUF(80, (ss, "saw  MAC:", plaintext->buf + plaintext->len,
-                   crSpec->mac_size));
-    PRINT_BUF(80, (ss, "comp MAC:", hash, crSpec->mac_size));
-
-    if (NSS_SecureMemcmp(plaintext->buf + plaintext->len, hash,
-	                 crSpec->mac_size) != 0) {
-      printf("!! MACs did not match\n");
-    }
-    
     /* Check the MAC */
     if (hashBytes != (unsigned)crSpec->mac_size || padIsBad || 
 	NSS_SecureMemcmp(plaintext->buf + plaintext->len, hash,

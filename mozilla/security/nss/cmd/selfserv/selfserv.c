@@ -821,8 +821,6 @@ logger(void *arg)
 ** End   thread management routines.
 **************************************************************************/
 
-#define MAX_SRP_USERNAME_LENGTH 255
-
 PRBool useModelSocket  = PR_FALSE;
 PRBool disableSSL2     = PR_FALSE;
 PRBool disableSSL3     = PR_FALSE;
@@ -1315,7 +1313,7 @@ handle_connection(
 
 	iovs[numIOVs].iov_base = (char *)endHeader;
 	iovs[numIOVs].iov_len  = (sizeof(endHeader)) - 1;
-	numIOVs++;        
+	numIOVs++;
 
 	if (local_file_fd) {
 	    PRInt32     bytes;
@@ -1658,7 +1656,7 @@ void initLoggingLayer(void)
     loggingMethods.send   = logSend;
 }
 
-/* the following conversion routine has been inspired by code from Stanford and have been taken from OpenSSL. SRP uses a non-standard base64 encoding for group config files */ 
+/* the following conversion routine has been inspired by code from Stanford and have been taken from OpenSSL. SRP uses a non-standard base64 encoding for group config files */
 
 static char srp_b64table[] =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz./";
@@ -1730,7 +1728,7 @@ parseSRPConf(PRFileDesc *f, SRPConfigGroupParams *srpConf)
         errExit("already parsed SRP group params config file (count != 0)");
 
     PR_Seek(f, 0, SEEK_SET);
-    
+
     PR_Seek(f, 0, SEEK_SET);
 
     while ((bytes = PR_Read(f, buf, buflen - 1))) {
@@ -1768,7 +1766,7 @@ parseSRPConf(PRFileDesc *f, SRPConfigGroupParams *srpConf)
         srpConf->g = PR_Realloc(srpConf->g, srpConf->count * sizeof(SECItem));
         if (srpConf->N == NULL || srpConf->g == NULL)
             errExit("couldn't realloc for N or g in SRP params");
-        
+
         config_index = param_index - 1;
         srpConf->N[config_index].data = NULL;
         srpConf->g[config_index].data = NULL;
@@ -1779,18 +1777,16 @@ parseSRPConf(PRFileDesc *f, SRPConfigGroupParams *srpConf)
         ok = SECITEM_AllocItem(NULL, &srpConf->g[config_index], 1);
         if (ok == NULL)
             errExit("error in SECITEM_AllocItem for SRP g");
-        
+
         rv = srp_fromb64((char *)srpConf->N[config_index].data, N);
         srpConf->N[config_index].len = rv;
         srpConf->g[config_index].data[0] = g;
     }
 }
 
-/* 
+/*
  * Callback function that supplies SSL with SRP parameters for specified user.
  * It fills *srp with info extracted from srpvfile
- *
- * XXX This function is the ~same as getUserData() in srputil..
  */
 
 SECStatus
@@ -1822,12 +1818,11 @@ getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
         buffer[bytes] = '\0';
         printf("buf = <<<%s>>>\n", buffer);
         if ((pos = PL_strnstr(buffer, uname, ulen))) {
-
             /* gobble username */
             tmp=buffer;
             while (tmp[0] != ':') tmp++;
             tmp++;
-            
+
             i=0;
             while (tmp[i] != ':') i++;
             tmp[i] = '\0';
@@ -1867,7 +1862,7 @@ getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
     config_index = group_index - 1;
     printf("verifier = %s\nsalt = %s\ngroup = %u\n", verifier, salt, group_index);
     group_size = srpConfGroupParams.N[config_index].len * 8;
-    
+
     SECITEM_AllocItem(NULL, &srp->secret, PL_strlen(verifier));
     SECITEM_AllocItem(NULL, &srp->s, PL_strlen(salt));
 
@@ -1875,7 +1870,7 @@ getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
     srp->secret.len = b64bytes;
     b64bytes = srp_fromb64((char *)srp->s.data, salt);
     srp->s.len = b64bytes;
-    
+
     if (group_index > srpConfGroupParams.count) {
         fprintf(stderr, "invalid group index %d\n", group_index);
         return SECFailure;
@@ -2260,8 +2255,8 @@ main(int argc, char **argv)
 
         case 'C': if (optstate->value) NumSidCacheEntries = PORT_Atoi(optstate->value); break;
 
-	case 'D': noDelay = PR_TRUE; break;
-	case 'E': disableStepDown = PR_TRUE; break;
+        case 'D': noDelay = PR_TRUE; break;
+        case 'E': disableStepDown = PR_TRUE; break;
         case 'H': srpConfFilename = PORT_Strdup(optstate->value); break;
         case 'K': srpvFilename = PORT_Strdup(optstate->value); break;
         case 'L':

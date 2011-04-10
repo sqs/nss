@@ -711,7 +711,7 @@ int main(int argc, char **argv)
     if (useSRPLogin) {
         enableSRPCiphers();
     }
-    
+
     /* all the SSL2 and SSL3 cipher suites are enabled by default. */
     if (cipherString) {
 	/* disable all the ciphers, then enable the ones we want. */
@@ -866,7 +866,7 @@ int main(int argc, char **argv)
     if (useSRPLogin) {
         disableSSL2 = PR_TRUE;
     }
-    
+
     rv = SSL_OptionSet(s, SSL_ENABLE_SSL2, !disableSSL2);
     if (rv != SECSuccess) {
 	SECU_PrintError(progName, "error enabling SSLv2 ");

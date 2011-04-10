@@ -1699,7 +1699,7 @@ NSSLOWKEYPublicKey *sftk_GetPubKey(SFTKObject *object,CK_KEY_TYPE key_type,
     	if (crv != CKR_OK) break;
 	crv = sftk_Attribute2SSecItem(arena,&pubKey->u.dh.base,
 							object,CKA_BASE);
-    	if (crv != CKR_OK) break;
+        if (crv != CKR_OK) break;
     	crv = sftk_Attribute2SSecItem(arena,&pubKey->u.dh.publicValue,
 							object,CKA_VALUE);
 	break;

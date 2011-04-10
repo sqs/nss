@@ -79,7 +79,7 @@ pk11_MakeIDFromPublicKey(SECKEYPublicKey *pubKey)
       break;      
     case srpKey:
       pubKeyIndex = &pubKey->u.srp.pub;
-      break;      
+      break;
     default:
       return NULL;
     }
@@ -745,15 +745,15 @@ PK11_ExtractPublicKey(PK11SlotInfo *slot,KeyType keyType,CK_OBJECT_HANDLE id)
 	break;
     case srpKey:
 	user = attrs;
-	PK11_SETATTRS(attrs, CKA_NSS_SRP_USER, NULL, 0); attrs++; 
+	PK11_SETATTRS(attrs, CKA_NSS_SRP_USER, NULL, 0); attrs++;
 	modulus = attrs;
-	PK11_SETATTRS(attrs, CKA_MODULUS, NULL, 0); attrs++; 
+	PK11_SETATTRS(attrs, CKA_MODULUS, NULL, 0); attrs++;
 	base = attrs;
-	PK11_SETATTRS(attrs, CKA_BASE, NULL, 0); attrs++; 
+	PK11_SETATTRS(attrs, CKA_BASE, NULL, 0); attrs++;
 	salt = attrs;
-	PK11_SETATTRS(attrs, CKA_NSS_SRP_SALT, NULL, 0); attrs++; 
+	PK11_SETATTRS(attrs, CKA_NSS_SRP_SALT, NULL, 0); attrs++;
 	value = attrs;
-	PK11_SETATTRS(attrs, CKA_VALUE, NULL, 0); attrs++; 
+	PK11_SETATTRS(attrs, CKA_VALUE, NULL, 0); attrs++;
 	templateCount = attrs - template;
 	PR_ASSERT(templateCount <= sizeof(template)/sizeof(CK_ATTRIBUTE));
 	crv = PK11_GetAttributes(tmp_arena,slot,id,template,templateCount);
@@ -762,7 +762,7 @@ PK11_ExtractPublicKey(PK11SlotInfo *slot,KeyType keyType,CK_OBJECT_HANDLE id)
 	if ((keyClass != CKO_PUBLIC_KEY) || (pk11KeyType != CKK_SRP)) {
 	    crv = CKR_OBJECT_HANDLE_INVALID;
 	    break;
-	} 
+	}
 	crv = pk11_Attr2SecItem(arena, modulus, &pubKey->u.srp.N);
 	if (crv != CKR_OK) break;
 	crv = pk11_Attr2SecItem(arena, base, &pubKey->u.srp.g);
@@ -1155,11 +1155,11 @@ PK11_GenerateKeyPairWithOpFlags(PK11SlotInfo *slot,CK_MECHANISM_TYPE type,
       { CKA_MODIFIABLE,  NULL, 0},
     };
     CK_ATTRIBUTE srpPubTemplate[] = {
-      { CKA_MODULUS, NULL, 0 }, 
-      { CKA_BASE, NULL, 0 }, 
-      { CKA_NSS_SRP_SALT, NULL, 0 }, 
-      { CKA_NSS_SRP_USER, NULL, 0 }, 
-      { CKA_NSS_SRP_SECRET, NULL, 0 }, 
+      { CKA_MODULUS, NULL, 0 },
+      { CKA_BASE, NULL, 0 },
+      { CKA_NSS_SRP_SALT, NULL, 0 },
+      { CKA_NSS_SRP_USER, NULL, 0 },
+      { CKA_NSS_SRP_SECRET, NULL, 0 },
       { CKA_TOKEN,  NULL, 0},
       { CKA_DERIVE,  NULL, 0},
       { CKA_WRAP,  NULL, 0},

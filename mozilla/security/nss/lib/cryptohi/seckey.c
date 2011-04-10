@@ -275,14 +275,15 @@ SECKEY_CreateSRPPrivateKey(SECKEYSRPParams *param, SECKEYPublicKey **pubk, PRBoo
 	    return NULL;
     }
 
-    privk = PK11_GenerateKeyPair(slot, type, param, 
-                                 pubk, PR_FALSE, PR_TRUE, cx);
-    if (!privk) 
-    privk = PK11_GenerateKeyPair(slot, type, param, 
-	                             pubk, PR_FALSE, PR_FALSE, cx);
+    privk = PK11_GenerateKeyPair(slot, type, param, pubk,
+                                 PR_FALSE, PR_TRUE, cx);
+    if (!privk) {
+      privk = PK11_GenerateKeyPair(slot, type, param, pubk,
+                                   PR_FALSE, PR_FALSE, cx);
+    }
 
     PK11_FreeSlot(slot);
-    return(privk);
+    return privk;
 }
 
 /* Create an EC key pair in any slot able to do so, 

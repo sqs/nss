@@ -302,7 +302,7 @@ SSL_GetSRPParamsHook(PRFileDesc *s, SSLGetSRPParamsCB func, void *arg)
 		 SSL_GETPID(), s));
 	return SECFailure;
     }
-    
+
     ss->getSRPParams = func;
     ss->getSRPParamsArg = arg;
     return SECSuccess;

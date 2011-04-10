@@ -96,3 +96,9 @@
   SNI     1       -r_-r_-r_-a_Host-sni.Dom -2_-w_nss_-n_TestUser_-a_Host-sni.Dom_-a_Host.Dom TLS Server hello response with SNI: Change name on 2d HS 
   SNI     1       -r_-r_-r_-a_Host-sni.Dom -2_-w_nss_-n_TestUser_-a_Host-sni.Dom_-a_Host-sni1.Dom TLS Server hello response with SNI: Change name to invalid 2d HS 
   SNI     1       -r_-r_-r_-a_Host-sni.Dom -2_-w_nss_-n_TestUser_-a_Host-sni1.Dom    TLS Server response with alert
+#
+# SRP tests
+#
+  SRP     0       -H_../srp/tpasswd.conf_-K_../srp/tpasswd_-c_:C01D:C01E  -l_TestUser_-k_nss_-2_-c_:C01D:C01E    TLS-SRP Require client login
+  SRP     1       -H_../srp/tpasswd.conf_-K_../srp/tpasswd_-c_:C01D:C01E  -l_bogus_-k_nss_-2_-c_:C01D:C01E       TLS-SRP Require client login (bad username)
+  SRP     1       -H_../srp/tpasswd.conf_-K_../srp/tpasswd_-c_:C01D:C01E  -l_TestUser_-k_bogus_-2_-c_:C01D:C01E  TLS-SRP Require client login (bad password)

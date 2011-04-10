@@ -2059,7 +2059,6 @@ server_main(
 	SSL_BadCertHook(model_sock, myBadCertHandler, NULL);
 
     if (srpvFile && srpConfFile) {
-        printf("setting SSL_GetSRPParamsHook\n");
         rv = SSL_GetSRPParamsHook(model_sock, getSRPParamsCallback, srpvFile);
         if (rv != SECSuccess) {
             errExit("error setting SRP params callback\n");

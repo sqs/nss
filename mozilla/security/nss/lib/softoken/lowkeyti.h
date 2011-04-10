@@ -104,7 +104,7 @@ struct NSSLOWKEYPublicKeyStr {
 	DSAPublicKey dsa;
 	DHPublicKey  dh;
 	ECPublicKey  ec;
-    SRPPublicKey srp;
+	SRPPublicKey srp;
     } u;
 };
 typedef struct NSSLOWKEYPublicKeyStr NSSLOWKEYPublicKey;

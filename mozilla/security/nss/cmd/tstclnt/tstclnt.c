@@ -309,6 +309,22 @@ disableAllSSLCiphers(void)
     }
 }
 
+void enableSRPCiphers(void)
+{
+    int i;
+    for (i = 0; i < SSL_NumImplementedCiphers; i++) {
+        SSLCipherSuiteInfo info;
+        if (SSL_GetCipherSuiteInfo(SSL_ImplementedCiphers[i], &info,
+                                   sizeof(info)) == SECSuccess) {
+            SSLKEAType k = info.keaType;
+            if (k == ssl_kea_srp || k == ssl_kea_srp_rsa ||
+                k == ssl_kea_srp_dss) {
+                SSL_CipherPrefSetDefault(SSL_ImplementedCiphers[i], PR_TRUE);
+            }
+        }
+    }
+}
+
 /*
  * Callback is called when incoming certificate is not valid.
  * Returns SECSuccess to accept the cert anyway, SECFailure to reject.
@@ -542,7 +558,7 @@ int main(int argc, char **argv)
     PRSocketOptionData opt;
     PRNetAddr          addr;
     PRPollDesc         pollset[2];
-    PRBool             useCommandLineLogin = PR_FALSE;
+    PRBool             useSRPLogin = PR_FALSE;
     PRBool             pingServerFirst = PR_FALSE;
     PRBool             clientSpeaksFirst = PR_FALSE;
     PRBool             wrStarted = PR_FALSE;
@@ -613,12 +629,12 @@ int main(int argc, char **argv)
 
           case 'l':
             userlogin = strdup(optstate->value);
-            useCommandLineLogin = PR_TRUE;
+            useSRPLogin = PR_TRUE;
             break;
 
           case 'k':
             userpasswd = strdup(optstate->value);
-            useCommandLineLogin = PR_TRUE;
+            useSRPLogin = PR_TRUE;
             break;
 
 	  case 'n': nickname = PORT_Strdup(optstate->value);	break;
@@ -692,6 +708,10 @@ int main(int argc, char **argv)
     else
 	NSS_SetDomesticPolicy();
 
+    if (useSRPLogin) {
+        enableSRPCiphers();
+    }
+    
     /* all the SSL2 and SSL3 cipher suites are enabled by default. */
     if (cipherString) {
 	/* disable all the ciphers, then enable the ones we want. */
@@ -842,6 +862,11 @@ int main(int argc, char **argv)
 	PORT_Free(cstringSaved);
     }
 
+    /* TLS-SRP requires SSL3 client extension */
+    if (useSRPLogin) {
+        disableSSL2 = PR_TRUE;
+    }
+    
     rv = SSL_OptionSet(s, SSL_ENABLE_SSL2, !disableSSL2);
     if (rv != SECSuccess) {
 	SECU_PrintError(progName, "error enabling SSLv2 ");
@@ -917,7 +942,7 @@ int main(int argc, char **argv)
     }
 
     /* tstclient provides login via cmd line, not interactive */
-    if (useCommandLineLogin) {
+    if (useSRPLogin) {
         if (userlogin && userpasswd) {
             SSL_UserPasswdHook(s, userPasswdCallback, NULL);
             SSL_SetUserLogin(s, userlogin, userpasswd);

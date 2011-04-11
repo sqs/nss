@@ -330,18 +330,7 @@ SECStatus SRP_ClientDerive(SRPPrivateKey *prvKey, SRPDeriveParams *srp,
     CHECK_MPI_OK(mp_add(&mp_res1,&mp_a,&mp_res1));
     CHECK_MPI_OK(mp_exptmod(&mp_res2,&mp_res1,&mp_N,&mp_pms));
 
-    PRINT_MPINT("u", mp_u);
-    PRINT_MPINT("k", mp_k);
-    PRINT_MPINT("N", mp_N);
-    PRINT_MPINT("g", mp_g);
-    PRINT_MPINT("x", mp_x);
-    PRINT_MPINT("a", mp_a);
-    PRINT_MPINT("A", mp_A);
-    PRINT_MPINT("B", mp_B);
-
     MPINT_TO_SECITEM(&mp_pms, pms, NULL);
-
-    PRINT_MPINT("ClientDerive pms", mp_pms);
 
     rv = SECSuccess;
 cleanup:

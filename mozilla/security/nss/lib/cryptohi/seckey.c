@@ -272,7 +272,7 @@ SECKEY_CreateSRPPrivateKey(SECKEYSRPParams *param, SECKEYPublicKey **pubk, PRBoo
 
     PK11SlotInfo *slot = PK11_GetBestSlot(type,cx);
     if (!slot) {
-	    return NULL;
+        return NULL;
     }
 
     privk = PK11_GenerateKeyPair(slot, type, param, pubk,

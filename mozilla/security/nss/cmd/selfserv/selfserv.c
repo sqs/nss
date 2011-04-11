@@ -1816,7 +1816,6 @@ getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
 
     while ( (bytes = PR_Read(srpvFile, buffer, buflen-1)) ) {
         buffer[bytes] = '\0';
-        printf("buf = <<<%s>>>\n", buffer);
         if ((pos = PL_strnstr(buffer, uname, ulen))) {
             /* gobble username */
             tmp=buffer;
@@ -1838,7 +1837,6 @@ getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
             tmp[i] = '\0';
             group_index = PORT_Atoi(tmp);
 
-            printf("CB: found user...\n");
             found = 1;
             break;
         } else {
@@ -1847,7 +1845,6 @@ getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
             if (!pos)
                 break; /* no more entries - fail */
             int nextline = pos - buffer - bytes + 1;
-            printf("Seek +%d\n", nextline);
             PR_Seek(srpvFile, nextline, SEEK_CUR);
         }
     }
@@ -1860,7 +1857,6 @@ getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
     }
 
     config_index = group_index - 1;
-    printf("verifier = %s\nsalt = %s\ngroup = %u\n", verifier, salt, group_index);
     group_size = srpConfGroupParams.N[config_index].len * 8;
 
     SECITEM_AllocItem(NULL, &srp->secret, PL_strlen(verifier));
@@ -1887,7 +1883,6 @@ getSRPParamsCallback(PRFileDesc *s, SECKEYSRPParams *srp, void *arg)
         return SECFailure;
     }
 
-    printf("Callback found a user, group index %d, returning...\n", group_index);
     return SECSuccess;
 }
 
